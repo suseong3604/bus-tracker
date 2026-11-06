@@ -8,6 +8,10 @@
   <!-- Google Maps API -->
   <script src="https://maps.googleapis.com/maps/api/js?libraries=places,geometry"></script>
 
+  <!-- Firebase SDK (v9/v10 Compat Library) -->
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+
   <style>
     :root {
       --bg-color: #f4f6f9;
@@ -138,7 +142,7 @@
     <div id="map-container">
       <div id="map"></div>
 
-      <!-- 기사님 전용 GPS 컨트롤러 (관리자 로그인 시에만 표시) -->
+      <!-- 기사님 전용 GPS 컨트롤러 -->
       <div id="driver-controls" class="driver-controls" style="display: none;">
         <div class="gps-status">
           <div id="gps-dot" class="dot"></div>
@@ -252,11 +256,29 @@
 
   <!-- Script Core -->
   <script>
+    // 💡 이미지 속 파이어베이스 키 설정 값과 DB URL이 적용되어 있습니다.
+    const firebaseConfig = {
+      apiKey: "AIzaSyCQPrquXqMQ6flQWDB0xds97GNd4i8znyw",
+      authDomain: "my-bus-tracker-5df7d.firebaseapp.com",
+      databaseURL: "https://my-bus-tracker-5df7d-default-rtdb.firebaseio.com",
+      projectId: "my-bus-tracker-5df7d",
+      storageBucket: "my-bus-tracker-5df7d.firebasestorage.app",
+      messagingSenderId: "257826789238",
+      appId: "1:257826789238:web:faac10150041e5088d4c57",
+      measurementId: "G-N61N3XD4SB"
+    };
+
+    // Firebase 초기화
+    let db = null;
+    if (firebaseConfig.apiKey !== "YOUR_API_KEY") {
+      firebase.initializeApp(firebaseConfig);
+      db = firebase.database();
+    }
+
     const ADMIN_PASSWORD_KEY = 'bus_admin_password';
     let isAdmin = false;
     let isDarkTheme = false;
 
-    // 기본 노선 및 정류장 데이터
     let defaultRoutes = {
       "route-1": {
         id: "route-1",
@@ -285,7 +307,44 @@
       initMap();
       renderRouteSelect();
       renderStopList();
+
+      // Firebase 실시간 수신기 등록
+      initFirebaseListeners();
     };
+
+    function initFirebaseListeners() {
+      if (!db) return;
+
+      // 1. 버스 GPS 위치 실시간 반영
+      db.ref("bus_location").on("value", (snapshot) => {
+        const data = snapshot.val();
+        if (data && data.lat && data.lng) {
+          updateBusPositionUI(data.lat, data.lng);
+        }
+      });
+
+      // 2. 노선/정류장 데이터 실시간 반영
+      db.ref("bus_routes").on("value", (snapshot) => {
+        const data = snapshot.val();
+        if (data) {
+          routes = data;
+          localStorage.setItem('bus_routes', JSON.stringify(routes));
+          if (!routes[currentRouteId]) {
+            currentRouteId = Object.keys(routes)[0] || "route-1";
+          }
+          renderRouteSelect();
+          updateMapRoute();
+          renderStopList();
+        }
+      });
+    }
+
+    function syncRoutesToCloud() {
+      localStorage.setItem("bus_routes", JSON.stringify(routes));
+      if (db) {
+        db.ref("bus_routes").set(routes);
+      }
+    }
 
     function initMap() {
       const defaultCenter = { lat: 37.2755, lng: 127.0275 };
@@ -350,7 +409,7 @@
       }
     }
 
-    function updateBusPosition(lat, lng) {
+    function updateBusPositionUI(lat, lng) {
       currentBusLocation = { lat, lng };
       const busPos = new google.maps.LatLng(lat, lng);
 
@@ -372,6 +431,17 @@
         busMarker.setPosition(busPos);
       }
       calculateETA();
+    }
+
+    function sendBusPositionToCloud(lat, lng) {
+      updateBusPositionUI(lat, lng);
+      if (db) {
+        db.ref("bus_location").set({
+          lat: lat,
+          lng: lng,
+          timestamp: Date.now()
+        });
+      }
     }
 
     function calculateETA() {
@@ -449,7 +519,6 @@
       });
     }
 
-    // --- 노선 추가 및 수정 기능 ---
     function openAddRouteModal() {
       isEditingRouteName = false;
       document.getElementById("modal-route-title").innerText = "➕ 새 노선 추가";
@@ -483,7 +552,7 @@
         currentRouteId = newId;
       }
 
-      localStorage.setItem("bus_routes", JSON.stringify(routes));
+      syncRoutesToCloud();
       closeModal("modal-route");
       renderRouteSelect();
       updateMapRoute();
@@ -499,14 +568,13 @@
       if(!confirm(`"${routes[currentRouteId].name}" 노선을 정말 삭제하시겠습니까?`)) return;
 
       delete routes[currentRouteId];
-      localStorage.setItem("bus_routes", JSON.stringify(routes));
       currentRouteId = Object.keys(routes)[0];
+      syncRoutesToCloud();
       renderRouteSelect();
       updateMapRoute();
       renderStopList();
     }
 
-    // --- 정류장 순서 변경 (위로 / 아래로) ---
     function moveStop(index, direction) {
       const stops = routes[currentRouteId].stops;
       const targetIndex = index + direction;
@@ -516,12 +584,11 @@
       stops[index] = stops[targetIndex];
       stops[targetIndex] = temp;
 
-      localStorage.setItem("bus_routes", JSON.stringify(routes));
+      syncRoutesToCloud();
       updateMapRoute();
       renderStopList();
     }
 
-    // --- 기사님 로그인 / 권한 처리 ---
     function openLoginModal() { document.getElementById("modal-login").classList.add("active"); }
     function closeModal(id) { document.getElementById(id).classList.remove("active"); }
 
@@ -565,7 +632,6 @@
       renderStopList();
     }
 
-    // --- 비밀번호 변경 기능 ---
     function openChangePwModal() {
       document.getElementById("pw-current").value = "";
       document.getElementById("pw-new").value = "";
@@ -594,10 +660,9 @@
 
       localStorage.setItem(ADMIN_PASSWORD_KEY, newPw);
       closeModal("modal-change-pw");
-      alert("비밀번호가 성공적으로 변경되었습니다. 다음 로그인부터 적용됩니다.");
+      alert("비밀번호가 성공적으로 변경되었습니다.");
     }
 
-    // --- GPS 추적 연동 ---
     function toggleGPS() {
       const btn = document.getElementById("btn-toggle-gps");
       const dot = document.getElementById("gps-dot");
@@ -612,7 +677,7 @@
         watchId = navigator.geolocation.watchPosition(
           (pos) => {
             const { latitude, longitude } = pos.coords;
-            updateBusPosition(latitude, longitude);
+            sendBusPositionToCloud(latitude, longitude);
           },
           (err) => alert("위치 정보를 가져올 수 없습니다: " + err.message),
           { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 }
@@ -632,7 +697,6 @@
       }
     }
 
-    // --- 정류장 추가 / 수정 / 삭제 ---
     function openAddStopModal() {
       document.getElementById("modal-stop-title").innerText = "📍 정류장 추가";
       document.getElementById("stop-edit-id").value = "";
@@ -681,7 +745,7 @@
         routes[currentRouteId].stops.push(newStop);
       }
 
-      localStorage.setItem("bus_routes", JSON.stringify(routes));
+      syncRoutesToCloud();
       closeModal("modal-stop");
       updateMapRoute();
       renderStopList();
@@ -690,12 +754,11 @@
     function deleteStop(stopId) {
       if(!confirm("해당 정류장을 삭제하시겠습니까?")) return;
       routes[currentRouteId].stops = routes[currentRouteId].stops.filter(s => s.id !== stopId);
-      localStorage.setItem("bus_routes", JSON.stringify(routes));
+      syncRoutesToCloud();
       updateMapRoute();
       renderStopList();
     }
 
-    // --- 유틸리티: 공유 및 테마 ---
     function copyShareLink() {
       navigator.clipboard.writeText(window.location.href);
       alert("승객용 접속 링크가 클립보드에 복사되었습니다!");
