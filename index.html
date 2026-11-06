@@ -298,7 +298,7 @@
     let stopMarkers = [];
     let watchId = null;
     let currentBusLocation = null;
-    let isEditingRouteName = false;
+    let currentBusSpeed = 0; // m/s 단위 속도 저장 변수
 
     window.onload = function() {
       if(!localStorage.getItem(ADMIN_PASSWORD_KEY)) {
@@ -316,7 +316,7 @@
       db.ref("bus_location").on("value", (snapshot) => {
         const data = snapshot.val();
         if (data && data.lat && data.lng) {
-          updateBusPositionUI(data.lat, data.lng);
+          updateBusPositionUI(data.lat, data.lng, data.speed || 0);
         }
       });
 
@@ -324,7 +324,6 @@
         const data = snapshot.val();
         if (data) {
           routes = data;
-          // 각 노선에 stops가 없는 경우 대비 방어 코드
           Object.keys(routes).forEach(rKey => {
             if (!routes[rKey].stops) routes[rKey].stops = [];
           });
@@ -346,7 +345,6 @@
       if (db) {
         db.ref("bus_routes").set(routes).catch((error) => {
           console.error("데이터 저장 실패: ", error);
-          alert("서버 저장 중 오류가 발생했습니다. 네트워크 연결을 확인해주세요.");
         });
       }
     }
@@ -414,8 +412,9 @@
       }
     }
 
-    function updateBusPositionUI(lat, lng) {
+    function updateBusPositionUI(lat, lng, speed) {
       currentBusLocation = { lat, lng };
+      currentBusSpeed = speed; // 속도 업데이트 (m/s)
       const busPos = new google.maps.LatLng(lat, lng);
 
       if(!busMarker) {
@@ -438,17 +437,19 @@
       calculateETA();
     }
 
-    function sendBusPositionToCloud(lat, lng) {
-      updateBusPositionUI(lat, lng);
+    function sendBusPositionToCloud(lat, lng, speed) {
+      updateBusPositionUI(lat, lng, speed);
       if (db) {
         db.ref("bus_location").set({
           lat: lat,
           lng: lng,
+          speed: speed,
           timestamp: Date.now()
         });
       }
     }
 
+    // 속도와 거리를 반영한 현실적인 ETA 계산 로직
     function calculateETA() {
       if(!currentBusLocation) return;
       const currentStops = routes[currentRouteId]?.stops || [];
@@ -458,13 +459,22 @@
         const busPos = new google.maps.LatLng(currentBusLocation.lat, currentBusLocation.lng);
         const distanceMeters = google.maps.geometry.spherical.computeDistanceBetween(busPos, stopPos);
         const distanceKm = (distanceMeters / 1000).toFixed(1);
-        const estimatedMinutes = Math.ceil((distanceMeters / 1000) / 30 * 60);
 
         const etaElem = document.getElementById(`eta-${stop.id}`);
         if(etaElem) {
           if(distanceMeters < 100) {
             etaElem.innerHTML = `<span style="color:var(--accent);">🎉 잠시 후 도착!</span>`;
           } else {
+            let estimatedMinutes = 0;
+            // 만약 기사님의 현재 속도가 유의미하게 측정되고 있다면 (약 5km/h 이상인 경우) 속도 기반 계산
+            if (currentBusSpeed && currentBusSpeed > 1.39) { 
+              const speedKmh = currentBusSpeed * 3.6; // m/s를 km/h로 변환
+              estimatedMinutes = Math.ceil((distanceMeters / 1000) / speedKmh * 60);
+            } else {
+              // 속도가 멈춰있거나 안 잡힐 때는 시내 주행 평균 속도(30km/h) 기준 적용
+              estimatedMinutes = Math.ceil((distanceMeters / 1000) / 30 * 60);
+            }
+            estimatedMinutes = Math.max(1, estimatedMinutes); // 최소 1분 보장
             etaElem.innerText = `약 ${estimatedMinutes}분 소요 (${distanceKm} km)`;
           }
         }
@@ -694,8 +704,8 @@
 
         watchId = navigator.geolocation.watchPosition(
           (pos) => {
-            const { latitude, longitude } = pos.coords;
-            sendBusPositionToCloud(latitude, longitude);
+            const { latitude, longitude, speed } = pos.coords;
+            sendBusPositionToCloud(latitude, longitude, speed);
           },
           (err) => alert("위치 정보를 가져올 수 없습니다: " + err.message),
           { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 }
