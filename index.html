@@ -69,12 +69,15 @@
     #map-container { flex: 1; position: relative; height: 100%; }
     #map { width: 100%; height: 100%; }
 
-    /* Admin Floating Controls (Driver Only) */
+    /* Admin Floating Controls (Driver Only) & Speed Badge */
     .driver-controls { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 5; background: var(--card-bg); padding: 12px 20px; border-radius: 30px; box-shadow: 0 4px 20px rgba(0,0,0,0.25); display: flex; gap: 10px; align-items: center; border: 1px solid var(--border-color); }
-    .gps-status { display: flex; align-items: center; gap: 6px; font-size: 0.85rem; font-weight: 600; margin-right: 8px; }
+    .gps-status { display: flex; align-items: center; gap: 6px; font-size: 0.85rem; font-weight: 600; margin-right: 4px; }
     .dot { width: 10px; height: 10px; border-radius: 50%; background: #9ca3af; }
     .dot.active { background: #10b981; animation: pulse 1.5s infinite; }
     @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.4; } 100% { opacity: 1; } }
+
+    /* 실시간 속도 표시 오버레이 (맵 우측 상단 혹은 하단) */
+    .speed-overlay { position: absolute; top: 15px; right: 15px; z-index: 5; background: var(--card-bg); color: var(--text-color); padding: 8px 14px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.15); border: 1px solid var(--border-color); font-weight: 700; font-size: 0.95rem; display: flex; align-items: center; gap: 6px; }
 
     /* Sidebar / Route Panel */
     .sidebar { width: 360px; background-color: var(--card-bg); border-left: 1px solid var(--border-color); display: flex; flex-direction: column; z-index: 5; height: 100%; overflow: hidden; }
@@ -142,6 +145,12 @@
     <!-- Map Container -->
     <div id="map-container">
       <div id="map"></div>
+
+      <!-- 실시간 속도 표시 오버레이 (지도 우측 상단) -->
+      <div class="speed-overlay">
+        <span>🚐 속도:</span>
+        <span id="speed-display">0 km/h</span>
+      </div>
 
       <!-- 기사님 전용 GPS 컨트롤러 -->
       <div id="driver-controls" class="driver-controls" style="display: none;">
@@ -298,7 +307,7 @@
     let stopMarkers = [];
     let watchId = null;
     let currentBusLocation = null;
-    let currentBusSpeed = 0; // m/s 단위 속도 저장 변수
+    let currentBusSpeed = 0; // m/s 단위 속도
 
     window.onload = function() {
       if(!localStorage.getItem(ADMIN_PASSWORD_KEY)) {
@@ -414,8 +423,12 @@
 
     function updateBusPositionUI(lat, lng, speed) {
       currentBusLocation = { lat, lng };
-      currentBusSpeed = speed; // 속도 업데이트 (m/s)
+      currentBusSpeed = speed;
       const busPos = new google.maps.LatLng(lat, lng);
+
+      // 화면 우측 상단 속도 표시 업데이트 (m/s를 km/h로 환산)
+      const speedKmh = speed > 0 ? Math.round(speed * 3.6) : 0;
+      document.getElementById("speed-display").innerText = `${speedKmh} km/h`;
 
       if(!busMarker) {
         busMarker = new google.maps.Marker({
@@ -449,7 +462,7 @@
       }
     }
 
-    // 속도와 거리를 반영한 현실적인 ETA 계산 로직
+    // 속도와 거리를 반영한 현실적인 ETA 계산
     function calculateETA() {
       if(!currentBusLocation) return;
       const currentStops = routes[currentRouteId]?.stops || [];
@@ -466,15 +479,13 @@
             etaElem.innerHTML = `<span style="color:var(--accent);">🎉 잠시 후 도착!</span>`;
           } else {
             let estimatedMinutes = 0;
-            // 만약 기사님의 현재 속도가 유의미하게 측정되고 있다면 (약 5km/h 이상인 경우) 속도 기반 계산
             if (currentBusSpeed && currentBusSpeed > 1.39) { 
-              const speedKmh = currentBusSpeed * 3.6; // m/s를 km/h로 변환
+              const speedKmh = currentBusSpeed * 3.6;
               estimatedMinutes = Math.ceil((distanceMeters / 1000) / speedKmh * 60);
             } else {
-              // 속도가 멈춰있거나 안 잡힐 때는 시내 주행 평균 속도(30km/h) 기준 적용
               estimatedMinutes = Math.ceil((distanceMeters / 1000) / 30 * 60);
             }
-            estimatedMinutes = Math.max(1, estimatedMinutes); // 최소 1분 보장
+            estimatedMinutes = Math.max(1, estimatedMinutes);
             etaElem.innerText = `약 ${estimatedMinutes}분 소요 (${distanceKm} km)`;
           }
         }
