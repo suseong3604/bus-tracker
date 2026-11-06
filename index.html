@@ -126,7 +126,7 @@
         <select id="route-select" onchange="switchRoute(this.value)"></select>
       </div>
 
-      <!-- 다크/라이트 모드 버튼 (해/달 이모지 적용) -->
+      <!-- 다크/라이트 모드 버튼 -->
       <button id="btn-theme" class="btn-theme" onclick="toggleTheme()" title="테마 변경">☀️</button>
 
       <!-- 관리자 로그인 / 로그아웃 / 비밀번호 변경 / 공유 -->
@@ -324,6 +324,10 @@
         const data = snapshot.val();
         if (data) {
           routes = data;
+          // 각 노선에 stops가 없는 경우 대비 방어 코드
+          Object.keys(routes).forEach(rKey => {
+            if (!routes[rKey].stops) routes[rKey].stops = [];
+          });
           localStorage.setItem('bus_routes', JSON.stringify(routes));
           if (!routes[currentRouteId]) {
             currentRouteId = Object.keys(routes)[0] || "route-1";
@@ -489,7 +493,12 @@
       const listContainer = document.getElementById("stop-list");
       listContainer.innerHTML = "";
 
-      const currentStops = routes[currentRouteId]?.stops || [];
+      if(!routes[currentRouteId]) return;
+      if(!routes[currentRouteId].stops) {
+        routes[currentRouteId].stops = [];
+      }
+
+      const currentStops = routes[currentRouteId].stops;
       if(currentStops.length === 0) {
         listContainer.innerHTML = `<p style="text-align:center; color:var(--text-muted); margin-top:20px;">등록된 정류장이 없습니다.</p>`;
         return;
@@ -744,6 +753,10 @@
         return;
       }
 
+      if(!routes[currentRouteId].stops) {
+        routes[currentRouteId].stops = [];
+      }
+
       if(id) {
         const stop = routes[currentRouteId].stops.find(s => s.id == id);
         if(stop) {
@@ -777,7 +790,6 @@
       alert("승객용 접속 링크가 클립보드에 복사되었습니다!");
     }
 
-    // 테마 변경 시 해(☀️)와 달(🌙) 아이콘이 교체되도록 수정
     function toggleTheme() {
       isDarkTheme = !isDarkTheme;
       document.body.setAttribute("data-theme", isDarkTheme ? "dark" : "light");
