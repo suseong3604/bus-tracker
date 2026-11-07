@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>실시간 전세버스 위치 추적 및 노선 관리 시스템</title>
 
-  <!-- Google Maps API -->
-  <script src="https://maps.googleapis.com/maps/api/js?libraries=places,geometry"></script>
+  <!-- Google Maps API (Geocoder 포함) -->
+  <script src="https://maps.googleapis.com/maps/api/js?libraries=places,geometry,geocoder"></script>
 
   <!-- Firebase SDK (v9/v10 Compat Library) -->
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
@@ -61,22 +61,26 @@
     .btn-secondary { background-color: transparent; color: var(--header-text); border: 1px solid rgba(255,255,255,0.3); }
     .btn-secondary:hover { background-color: rgba(255,255,255,0.1); }
     .btn-theme { background: transparent; color: var(--header-text); font-size: 1.2rem; border: none; cursor: pointer; padding: 4px; }
+    .btn-danger { background-color: var(--danger); color: white; }
 
     /* Main Content Area */
     .main-container { display: flex; flex: 1; position: relative; overflow: hidden; height: calc(100vh - 60px); }
 
-    /* Map Area (기본 숨김, 기사 로그인 시에만 표시) */
+    /* Map Area (기사 모드용) */
     #map-container { flex: 1; position: relative; height: 100%; display: none; }
     #map { width: 100%; height: 100%; }
 
-    /* 승객용 전체 화면 패널 (기본 활성화) */
+    /* 승객용 전체 화면 패널 */
     .passenger-panel { flex: 1; display: flex; flex-direction: column; background: var(--bg-color); height: 100%; overflow: hidden; }
     
     /* 실시간 상태 대시보드 (승객용 상단 요약) */
     .status-dashboard { background: var(--card-bg); border-bottom: 1px solid var(--border-color); padding: 16px 20px; display: flex; justify-content: space-around; align-items: center; flex-shrink: 0; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
     .status-item { text-align: center; }
     .status-label { font-size: 0.8rem; color: var(--text-muted); margin-bottom: 2px; }
-    .status-value { font-size: 1.1rem; font-weight: 700; color: var(--primary); }
+    .status-value { font-size: 1.05rem; font-weight: 700; color: var(--primary); }
+
+    /* 현재 위치 주소 표시 바 */
+    .address-bar { background: var(--card-bg); border-bottom: 1px solid var(--border-color); padding: 10px 20px; font-size: 0.9rem; display: flex; align-items: center; gap: 8px; flex-shrink: 0; color: var(--text-color); font-weight: 500; }
 
     /* Admin Floating Controls (Driver Only) */
     .driver-controls { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 5; background: var(--card-bg); padding: 12px 20px; border-radius: 30px; box-shadow: 0 4px 20px rgba(0,0,0,0.25); display: flex; gap: 10px; align-items: center; border: 1px solid var(--border-color); }
@@ -146,9 +150,13 @@
   <!-- Main Content -->
   <div class="main-container">
     
-    <!-- 1. 승객용 전체 화면 패널 (지도가 보이지 않고 리스트와 상태만 표시) -->
+    <!-- 승객용 전체 화면 패널 -->
     <div id="passenger-panel" class="passenger-panel">
       <div class="status-dashboard">
+        <div class="status-item">
+          <div class="status-label">운행 상태</div>
+          <div id="passenger-trip-status" class="status-value" style="color: var(--danger);">🔴 운행 종료</div>
+        </div>
         <div class="status-item">
           <div class="status-label">현재 버스 속도</div>
           <div id="passenger-speed" class="status-value">0 km/h</div>
@@ -158,29 +166,37 @@
           <div id="passenger-gps-status" class="status-value" style="color:var(--text-muted);">대기 중</div>
         </div>
       </div>
+
+      <!-- 현재 위치 주소 안내 바 -->
+      <div class="address-bar">
+        <span>📍 버스 위치:</span>
+        <span id="passenger-address" style="color: var(--text-muted); font-weight: normal;">위치 정보 수신 대기 중...</span>
+      </div>
+
       <div style="padding: 12px 16px 0 16px; max-width: 800px; width: 100%; margin: 0 auto; display: flex; justify-content: space-between; align-items: center;">
         <h2 style="font-size: 1.1rem;">📍 전체 정류장 및 도착 예정 시간</h2>
       </div>
       <div id="stop-list-passenger" class="stop-list">
-        <!-- 승객용 정류장 리스트가 동적으로 삽입됩니다 -->
+        <!-- 승객용 정류장 리스트 -->
       </div>
     </div>
 
-    <!-- 2. Map Container (기사 로그인 시에만 나타남) -->
+    <!-- Map Container (기사 로그인 시에만 표시) -->
     <div id="map-container">
       <div id="map"></div>
 
-      <!-- 기사님 전용 GPS 컨트롤러 -->
+      <!-- 기사님 전용 GPS 컨트롤러 및 운행 상태 설정 버튼 -->
       <div id="driver-controls" class="driver-controls" style="display: none;">
         <div class="gps-status">
           <div id="gps-dot" class="dot"></div>
           <span id="gps-text">GPS 정지됨</span>
         </div>
-        <button id="btn-toggle-gps" class="btn btn-primary" onclick="toggleGPS()">📡 내 위치 추적 시작</button>
+        <button id="btn-toggle-gps" class="btn btn-primary" onclick="toggleGPS()">📡 위치 추적 시작</button>
+        <button id="btn-toggle-trip" class="btn btn-danger" onclick="toggleTripStatus()">🔴 운행 종료 중</button>
       </div>
     </div>
 
-    <!-- 3. Sidebar: 기사 모드일 때만 오른쪽에 정류장 관리 패널 표시 -->
+    <!-- Sidebar: 기사 모드용 정류장 관리 패널 -->
     <div id="driver-sidebar" class="sidebar" style="display: none;">
       <div class="sidebar-header">
         <h2>📍 정류장 관리</h2>
@@ -304,6 +320,7 @@
     const ADMIN_PASSWORD_KEY = 'bus_admin_password';
     let isAdmin = false;
     let isDarkTheme = false;
+    let isTripActive = false;
 
     let defaultRoutes = {
       "route-1": {
@@ -320,11 +337,12 @@
     let routes = JSON.parse(localStorage.getItem('bus_routes')) || defaultRoutes;
     let currentRouteId = Object.keys(routes)[0] || "route-1";
 
-    let map, busMarker, polyline;
+    let map, busMarker, polyline, geocoder;
     let stopMarkers = [];
     let watchId = null;
     let currentBusLocation = null;
     let currentBusSpeed = 0;
+    let lastCloudSendTime = 0;
 
     window.onload = function() {
       if(!localStorage.getItem(ADMIN_PASSWORD_KEY)) {
@@ -341,8 +359,14 @@
 
       db.ref("bus_location").on("value", (snapshot) => {
         const data = snapshot.val();
-        if (data && data.lat && data.lng) {
-          updateBusPositionUI(data.lat, data.lng, data.speed || 0);
+        if (data) {
+          if (data.lat && data.lng) {
+            updateBusPositionUI(data.lat, data.lng, data.speed || 0);
+          }
+          if (typeof data.isTripActive !== 'undefined') {
+            isTripActive = data.isTripActive;
+            updateTripStatusUI();
+          }
         }
       });
 
@@ -382,6 +406,7 @@
         zoom: 13,
         zoomControl: true
       });
+      geocoder = new google.maps.Geocoder();
 
       map.addListener("click", (e) => {
         if(!isAdmin) return;
@@ -444,12 +469,19 @@
       const busPos = new google.maps.LatLng(lat, lng);
 
       const speedKmh = speed > 0 ? Math.round(speed * 3.6) : 0;
-      
-      // 속도 및 GPS 상태 대시보드 업데이트 (승객용)
       document.getElementById("passenger-speed").innerText = `${speedKmh} km/h`;
+      
       const gpsStatusElem = document.getElementById("passenger-gps-status");
-      gpsStatusElem.innerText = "운행 중 (신호 수신 양호)";
+      gpsStatusElem.innerText = "수신 양호";
       gpsStatusElem.style.color = "var(--accent)";
+
+      if (geocoder) {
+        geocoder.geocode({ location: busPos }, (results, status) => {
+          if (status === "OK" && results[0]) {
+            document.getElementById("passenger-address").innerText = results[0].formatted_address;
+          }
+        });
+      }
 
       if (map) {
         if(!busMarker) {
@@ -473,15 +505,63 @@
       calculateETA();
     }
 
+    function handleGPSPosition(pos) {
+      const { latitude, longitude, speed } = pos.coords;
+      const now = Date.now();
+      
+      updateBusPositionUI(latitude, longitude, speed || 0);
+
+      if (now - lastCloudSendTime >= 45000) {
+        lastCloudSendTime = now;
+        sendBusPositionToCloud(latitude, longitude, speed || 0);
+      }
+    }
+
     function sendBusPositionToCloud(lat, lng, speed) {
-      updateBusPositionUI(lat, lng, speed);
       if (db) {
-        db.ref("bus_location").set({
+        db.ref("bus_location").update({
           lat: lat,
           lng: lng,
           speed: speed,
+          isTripActive: isTripActive,
           timestamp: Date.now()
         });
+      }
+    }
+
+    function toggleTripStatus() {
+      if(!isAdmin) return;
+      isTripActive = !isTripActive;
+      updateTripStatusUI();
+      
+      if (db && currentBusLocation) {
+        db.ref("bus_location").update({
+          isTripActive: isTripActive,
+          timestamp: Date.now()
+        });
+      } else if (db) {
+        db.ref("bus_location").update({ isTripActive: isTripActive });
+      }
+    }
+
+    function updateTripStatusUI() {
+      const statusText = document.getElementById("passenger-trip-status");
+      const tripBtn = document.getElementById("btn-toggle-trip");
+
+      if (isTripActive) {
+        statusText.innerText = "🟢 운행 중";
+        statusText.style.color = "var(--accent)";
+        if(tripBtn) {
+          tripBtn.innerText = "🟢 운행 중 (클릭시 종료)";
+          tripBtn.classList.replace("btn-danger", "btn-primary");
+        }
+      } else {
+        statusText.innerText = "🔴 운행 종료";
+        statusText.style.color = "var(--danger)";
+        if(tripBtn) {
+          tripBtn.innerText = "🔴 운행 종료 중 (클릭시 시작)";
+          tripBtn.classList.replace("btn-primary", "btn-danger");
+        }
       }
     }
 
@@ -495,7 +575,6 @@
         const distanceMeters = google.maps.geometry.spherical.computeDistanceBetween(busPos, stopPos);
         const distanceKm = (distanceMeters / 1000).toFixed(1);
 
-        // 승객용 및 기사용 각각의 ETA 엘리먼트 업데이트
         updateEtaText(`eta-p-${stop.id}`, distanceMeters, distanceKm);
         updateEtaText(`eta-d-${stop.id}`, distanceMeters, distanceKm);
       });
@@ -538,7 +617,6 @@
       renderStopList();
     }
 
-    // 승객용과 기사용 리스트를 동시에 렌더링
     function renderStopList() {
       renderSingleStopList("stop-list-passenger", "p");
       renderSingleStopList("stop-list-driver", "d");
@@ -678,7 +756,6 @@
         document.getElementById("btn-change-pw-modal").style.display = "inline-flex";
         document.getElementById("btn-logout").style.display = "inline-flex";
         
-        // 기사 모드 전환 시: 승객 패널 숨기고 지도와 관리자 사이드바 표시
         document.getElementById("passenger-panel").style.display = "none";
         document.getElementById("map-container").style.display = "block";
         document.getElementById("driver-sidebar").style.display = "flex";
@@ -700,7 +777,6 @@
       document.getElementById("btn-change-pw-modal").style.display = "none";
       document.getElementById("btn-logout").style.display = "none";
       
-      // 승객 모드 복귀: 지도 및 기사 사이드바 숨기고 승객 전용 패널 표시
       document.getElementById("passenger-panel").style.display = "flex";
       document.getElementById("map-container").style.display = "none";
       document.getElementById("driver-sidebar").style.display = "none";
@@ -756,10 +832,7 @@
         }
 
         watchId = navigator.geolocation.watchPosition(
-          (pos) => {
-            const { latitude, longitude, speed } = pos.coords;
-            sendBusPositionToCloud(latitude, longitude, speed);
-          },
+          handleGPSPosition,
           (err) => alert("위치 정보를 가져올 수 없습니다: " + err.message),
           { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 }
         );
@@ -771,7 +844,7 @@
       } else {
         navigator.geolocation.clearWatch(watchId);
         watchId = null;
-        btn.innerText = "📡 내 위치 추적 시작";
+        btn.innerText = "📡 위치 추적 시작";
         btn.classList.replace("btn-secondary", "btn-primary");
         dot.classList.remove("active");
         text.innerText = "GPS 정지됨";
