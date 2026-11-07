@@ -44,27 +44,33 @@
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
     body { background-color: var(--bg-color); color: var(--text-color); display: flex; flex-direction: column; height: 100vh; overflow: hidden; transition: background-color 0.3s, color 0.3s; }
 
-    /* Header */
-    header { background-color: var(--header-bg); color: var(--header-text); padding: 12px 20px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 8px rgba(0,0,0,0.15); z-index: 10; flex-shrink: 0; }
-    .logo-area { display: flex; align-items: center; gap: 10px; }
-    .logo-area h1 { font-size: 1.1rem; font-weight: 700; }
-    .badge-driver { background: #e11d48; color: white; padding: 2px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: bold; }
-    .badge-passenger { background: #059669; color: white; padding: 2px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: bold; }
+    /* Header 모바일 최적화 */
+    header { background-color: var(--header-bg); color: var(--header-text); padding: 10px 14px; display: flex; flex-direction: column; gap: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.15); z-index: 10; flex-shrink: 0; }
+    .header-top { display: flex; justify-content: space-between; align-items: center; width: 100%; }
+    .logo-area { display: flex; align-items: center; gap: 6px; overflow: hidden; }
+    .logo-area span:first-child { font-size: 1.2rem; }
+    .logo-area h1 { font-size: 0.95rem; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 170px; }
+    
+    .badge-driver { background: #e11d48; color: white; padding: 2px 6px; border-radius: 10px; font-size: 0.7rem; font-weight: bold; white-space: nowrap; }
+    .badge-passenger { background: #059669; color: white; padding: 2px 6px; border-radius: 10px; font-size: 0.7rem; font-weight: bold; white-space: nowrap; }
 
-    .header-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-    .route-selector select { background: var(--card-bg); color: var(--text-color); border: 1px solid var(--border-color); padding: 6px 12px; border-radius: 6px; font-size: 0.9rem; font-weight: 600; cursor: pointer; }
+    .header-bottom { display: flex; justify-content: space-between; align-items: center; width: 100%; gap: 6px; }
+    .route-selector { flex: 1; min-width: 0; }
+    .route-selector select { width: 100%; background: var(--card-bg); color: var(--text-color); border: 1px solid var(--border-color); padding: 5px 8px; border-radius: 6px; font-size: 0.85rem; font-weight: 600; cursor: pointer; text-overflow: ellipsis; }
+
+    .header-actions { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
 
     /* Buttons */
-    .btn { padding: 6px 12px; border-radius: 6px; border: none; font-size: 0.85rem; font-weight: 600; cursor: pointer; transition: all 0.2s; display: inline-flex; align-items: center; gap: 5px; }
+    .btn { padding: 5px 10px; border-radius: 6px; border: none; font-size: 0.78rem; font-weight: 600; cursor: pointer; transition: all 0.2s; display: inline-flex; align-items: center; gap: 3px; white-space: nowrap; }
     .btn-primary { background-color: var(--primary); color: white; }
     .btn-primary:hover { background-color: var(--primary-hover); }
     .btn-secondary { background-color: transparent; color: var(--header-text); border: 1px solid rgba(255,255,255,0.3); }
     .btn-secondary:hover { background-color: rgba(255,255,255,0.1); }
-    .btn-theme { background: transparent; color: var(--header-text); font-size: 1.2rem; border: none; cursor: pointer; padding: 4px; }
+    .btn-theme { background: transparent; color: var(--header-text); font-size: 1.1rem; border: none; cursor: pointer; padding: 2px 4px; }
     .btn-danger { background-color: var(--danger); color: white; }
 
     /* Main Content Area */
-    .main-container { display: flex; flex: 1; position: relative; overflow: hidden; height: calc(100vh - 60px); }
+    .main-container { display: flex; flex: 1; position: relative; overflow: hidden; height: calc(100vh - 85px); }
 
     /* Map Area (기사 모드용) */
     #map-container { flex: 1; position: relative; height: 100%; display: none; }
@@ -73,50 +79,55 @@
     /* 승객용 전체 화면 패널 */
     .passenger-panel { flex: 1; display: flex; flex-direction: column; background: var(--bg-color); height: 100%; overflow: hidden; }
     
-    /* 실시간 상태 대시보드 (승객용 상단 요약) */
-    .status-dashboard { background: var(--card-bg); border-bottom: 1px solid var(--border-color); padding: 16px 20px; display: flex; justify-content: space-around; align-items: center; flex-shrink: 0; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+    /* 실시간 상태 대시보드 */
+    .status-dashboard { background: var(--card-bg); border-bottom: 1px solid var(--border-color); padding: 12px 14px; display: flex; justify-content: space-around; align-items: center; flex-shrink: 0; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
     .status-item { text-align: center; }
-    .status-label { font-size: 0.8rem; color: var(--text-muted); margin-bottom: 2px; }
-    .status-value { font-size: 1.05rem; font-weight: 700; color: var(--primary); }
+    .status-label { font-size: 0.75rem; color: var(--text-muted); margin-bottom: 2px; }
+    .status-value { font-size: 0.95rem; font-weight: 700; color: var(--primary); }
 
     /* 현재 위치 주소 표시 바 */
-    .address-bar { background: var(--card-bg); border-bottom: 1px solid var(--border-color); padding: 10px 20px; font-size: 0.9rem; display: flex; align-items: center; gap: 8px; flex-shrink: 0; color: var(--text-color); font-weight: 500; }
+    .address-bar { background: var(--card-bg); border-bottom: 1px solid var(--border-color); padding: 8px 14px; font-size: 0.82rem; display: flex; align-items: center; gap: 6px; flex-shrink: 0; color: var(--text-color); font-weight: 500; }
+    .address-bar span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
     /* Admin Floating Controls (Driver Only) */
-    .driver-controls { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 5; background: var(--card-bg); padding: 12px 20px; border-radius: 30px; box-shadow: 0 4px 20px rgba(0,0,0,0.25); display: flex; gap: 10px; align-items: center; border: 1px solid var(--border-color); }
-    .gps-status { display: flex; align-items: center; gap: 6px; font-size: 0.85rem; font-weight: 600; margin-right: 4px; }
-    .dot { width: 10px; height: 10px; border-radius: 50%; background: #9ca3af; }
+    .driver-controls { position: absolute; bottom: 15px; left: 50%; transform: translateX(-50%); z-index: 5; background: var(--card-bg); padding: 10px 16px; border-radius: 30px; box-shadow: 0 4px 20px rgba(0,0,0,0.25); display: flex; gap: 8px; align-items: center; border: 1px solid var(--border-color); }
+    .gps-status { display: flex; align-items: center; gap: 5px; font-size: 0.8rem; font-weight: 600; margin-right: 2px; }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: #9ca3af; }
     .dot.active { background: #10b981; animation: pulse 1.5s infinite; }
     @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.4; } 100% { opacity: 1; } }
 
     /* Sidebar / Route Panel (기사 모드용) */
     .sidebar { width: 380px; background-color: var(--card-bg); border-left: 1px solid var(--border-color); display: flex; flex-direction: column; z-index: 5; height: 100%; overflow: hidden; }
-    .sidebar-header { padding: 16px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; }
-    .sidebar-header h2 { font-size: 1rem; color: var(--text-color); }
-    .sidebar-admin-actions { padding: 10px 16px; background: var(--bg-color); border-bottom: 1px solid var(--border-color); display: flex; gap: 6px; justify-content: flex-end; flex-wrap: wrap; flex-shrink: 0; }
+    .sidebar-header { padding: 14px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; }
+    .sidebar-header h2 { font-size: 0.95rem; color: var(--text-color); }
+    .sidebar-admin-actions { padding: 8px 14px; background: var(--bg-color); border-bottom: 1px solid var(--border-color); display: flex; gap: 5px; justify-content: flex-end; flex-wrap: wrap; flex-shrink: 0; }
 
     /* 정류장 리스트 스크롤 영역 */
-    .stop-list { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 16px; min-height: 0; max-width: 800px; width: 100%; margin: 0 auto; }
-    .stop-item { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 10px; padding: 16px; margin-bottom: 12px; position: relative; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
-    .stop-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
-    .stop-name { font-weight: 700; font-size: 1.05rem; color: var(--text-color); }
-    .stop-time { font-size: 0.85rem; color: var(--text-muted); background: var(--bg-color); padding: 3px 8px; border-radius: 4px; border: 1px solid var(--border-color); }
-    .stop-eta { font-size: 0.95rem; color: var(--primary); font-weight: 600; margin-top: 6px; display: flex; justify-content: space-between; }
-    .stop-actions { display: flex; gap: 4px; margin-top: 10px; flex-wrap: wrap; align-items: center; }
+    .stop-list { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 12px; max-width: 800px; width: 100%; margin: 0 auto; }
+    .stop-item { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 10px; padding: 14px; margin-bottom: 10px; position: relative; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
+    .stop-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; gap: 6px; }
+    .stop-name { font-weight: 700; font-size: 0.98rem; color: var(--text-color); }
+    .stop-time { font-size: 0.78rem; color: var(--text-muted); background: var(--bg-color); padding: 2px 6px; border-radius: 4px; border: 1px solid var(--border-color); white-space: nowrap; flex-shrink: 0; }
+    .stop-eta { font-size: 0.88rem; color: var(--primary); font-weight: 600; margin-top: 4px; display: flex; justify-content: space-between; }
+    .stop-actions { display: flex; gap: 4px; margin-top: 8px; flex-wrap: wrap; align-items: center; }
 
     /* Modals */
-    .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: none; justify-content: center; align-items: center; z-index: 100; }
+    .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: none; justify-content: center; align-items: center; z-index: 100; padding: 15px; }
     .modal-overlay.active { display: flex; }
-    .modal { background: var(--card-bg); color: var(--text-color); width: 90%; max-width: 420px; border-radius: 12px; padding: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
-    .modal h3 { margin-bottom: 15px; font-size: 1.1rem; }
-    .form-group { margin-bottom: 12px; }
-    .form-group label { display: block; font-size: 0.85rem; margin-bottom: 4px; color: var(--text-muted); }
-    .form-group input { width: 100%; padding: 8px 12px; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-color); color: var(--text-color); font-size: 0.9rem; }
-    .modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px; }
+    .modal { background: var(--card-bg); color: var(--text-color); width: 100%; max-width: 400px; border-radius: 12px; padding: 18px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
+    .modal h3 { margin-bottom: 12px; font-size: 1.05rem; }
+    .form-group { margin-bottom: 10px; }
+    .form-group label { display: block; font-size: 0.82rem; margin-bottom: 4px; color: var(--text-muted); }
+    .form-group input { width: 100%; padding: 8px 10px; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-color); color: var(--text-color); font-size: 0.88rem; }
+    .modal-actions { display: flex; justify-content: flex-end; gap: 6px; margin-top: 15px; }
 
-    /* Responsive */
-    @media (max-width: 768px) {
-      .sidebar { width: 100%; height: 100%; border-left: none; }
+    /* 데스크톱 환경에서는 헤더를 가로 한 줄로 배치 */
+    @media (min-width: 769px) {
+      header { flex-direction: row; padding: 12px 20px; }
+      .header-bottom { width: auto; gap: 10px; }
+      .route-selector { width: 220px; flex: initial; }
+      .logo-area h1 { max-width: none; font-size: 1.1rem; }
+      .main-container { height: calc(100vh - 60px); }
     }
   </style>
 </head>
@@ -124,26 +135,30 @@
 
   <!-- Header -->
   <header>
-    <div class="logo-area">
-      <span>🚌</span>
-      <h1>실시간 전세버스 위치 추적</h1>
+    <div class="header-top">
+      <div class="logo-area">
+        <span>🚌</span>
+        <h1>전세버스 실시간 위치 추적</h1>
+      </div>
       <span id="user-badge" class="badge-passenger">승객 (조회 전용)</span>
     </div>
 
-    <div class="header-actions">
+    <div class="header-bottom">
       <!-- 노선 선택 -->
       <div class="route-selector">
         <select id="route-select" onchange="switchRoute(this.value)"></select>
       </div>
 
-      <!-- 다크/라이트 모드 버튼 -->
-      <button id="btn-theme" class="btn-theme" onclick="toggleTheme()" title="테마 변경">☀️</button>
+      <div class="header-actions">
+        <!-- 다크/라이트 모드 버튼 -->
+        <button id="btn-theme" class="btn-theme" onclick="toggleTheme()" title="테마 변경">☀️</button>
 
-      <!-- 관리자 로그인 / 로그아웃 / 비밀번호 변경 / 공유 -->
-      <button id="btn-login-modal" class="btn btn-secondary" onclick="openLoginModal()">기사님 로그인</button>
-      <button id="btn-change-pw-modal" class="btn btn-secondary" onclick="openChangePwModal()" style="display:none;">🔑 비밀번호 변경</button>
-      <button id="btn-logout" class="btn btn-secondary" onclick="logout()" style="display:none;">로그아웃</button>
-      <button class="btn btn-primary" onclick="copyShareLink()">🔗 공유 링크</button>
+        <!-- 관리자 로그인 / 로그아웃 / 비밀번호 변경 / 공유 -->
+        <button id="btn-login-modal" class="btn btn-secondary" onclick="openLoginModal()">기사님 로그인</button>
+        <button id="btn-change-pw-modal" class="btn btn-secondary" onclick="openChangePwModal()" style="display:none;">🔑 비번변경</button>
+        <button id="btn-logout" class="btn btn-secondary" onclick="logout()" style="display:none;">로그아웃</button>
+        <button class="btn btn-primary" onclick="copyShareLink()">🔗 공유</button>
+      </div>
     </div>
   </header>
 
@@ -158,11 +173,11 @@
           <div id="passenger-trip-status" class="status-value" style="color: var(--danger);">🔴 운행 종료</div>
         </div>
         <div class="status-item">
-          <div class="status-label">현재 버스 속도</div>
+          <div class="status-label">현재 속도</div>
           <div id="passenger-speed" class="status-value">0 km/h</div>
         </div>
         <div class="status-item">
-          <div class="status-label">GPS 수신 상태</div>
+          <div class="status-label">GPS 상태</div>
           <div id="passenger-gps-status" class="status-value" style="color:var(--text-muted);">대기 중</div>
         </div>
       </div>
@@ -173,8 +188,8 @@
         <span id="passenger-address" style="color: var(--text-muted); font-weight: normal;">위치 정보 수신 대기 중...</span>
       </div>
 
-      <div style="padding: 12px 16px 0 16px; max-width: 800px; width: 100%; margin: 0 auto; display: flex; justify-content: space-between; align-items: center;">
-        <h2 style="font-size: 1.1rem;">📍 전체 정류장 및 도착 예정 시간</h2>
+      <div style="padding: 10px 14px 0 14px; max-width: 800px; width: 100%; margin: 0 auto; display: flex; justify-content: space-between; align-items: center;">
+        <h2 style="font-size: 1rem;">📍 전체 정류장 및 도착 예정 시간</h2>
       </div>
       <div id="stop-list-passenger" class="stop-list">
         <!-- 승객용 정류장 리스트 -->
@@ -205,11 +220,11 @@
       
       <div id="sidebar-admin-actions" class="sidebar-admin-actions">
         <button class="btn btn-secondary" style="color:var(--text-color); font-size:0.75rem;" onclick="openAddRouteModal()">➕ 새 노선 추가</button>
-        <button class="btn btn-secondary" style="color:var(--text-color); font-size:0.75rem;" onclick="openEditRouteModal()">✏️ 현재 노선명 수정</button>
+        <button class="btn btn-secondary" style="color:var(--text-color); font-size:0.75rem;" onclick="openEditRouteModal()">✏️ 노선명 수정</button>
         <button class="btn btn-secondary" style="color:var(--danger); font-size:0.75rem;" onclick="deleteCurrentRoute()">🗑️ 노선 삭제</button>
       </div>
 
-      <div id="stop-list-driver" class="stop-list" style="padding: 12px;">
+      <div id="stop-list-driver" class="stop-list" style="padding: 10px;">
         <!-- 기사 모드용 정류장 리스트 -->
       </div>
     </div>
@@ -552,14 +567,14 @@
         statusText.innerText = "🟢 운행 중";
         statusText.style.color = "var(--accent)";
         if(tripBtn) {
-          tripBtn.innerText = "🟢 운행 중 (클릭시 종료)";
+          tripBtn.innerText = "🟢 운행 중 (종료하기)";
           tripBtn.classList.replace("btn-danger", "btn-primary");
         }
       } else {
         statusText.innerText = "🔴 운행 종료";
         statusText.style.color = "var(--danger)";
         if(tripBtn) {
-          tripBtn.innerText = "🔴 운행 종료 중 (클릭시 시작)";
+          tripBtn.innerText = "🔴 운행 종료 (시작하기)";
           tripBtn.classList.replace("btn-primary", "btn-danger");
         }
       }
@@ -837,7 +852,7 @@
           { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 }
         );
 
-        btn.innerText = "🛑 위치 추적 중지";
+        btn.innerText = "🛑 추적 중지";
         btn.classList.replace("btn-primary", "btn-secondary");
         dot.classList.add("active");
         text.innerText = "GPS 추적 중";
