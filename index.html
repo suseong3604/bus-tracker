@@ -65,34 +65,40 @@
     /* Main Content Area */
     .main-container { display: flex; flex: 1; position: relative; overflow: hidden; height: calc(100vh - 60px); }
 
-    /* Map Area */
-    #map-container { flex: 1; position: relative; height: 100%; }
+    /* Map Area (기본 숨김, 기사 로그인 시에만 표시) */
+    #map-container { flex: 1; position: relative; height: 100%; display: none; }
     #map { width: 100%; height: 100%; }
 
-    /* Admin Floating Controls (Driver Only) & Speed Badge */
+    /* 승객용 전체 화면 패널 (기본 활성화) */
+    .passenger-panel { flex: 1; display: flex; flex-direction: column; background: var(--bg-color); height: 100%; overflow: hidden; }
+    
+    /* 실시간 상태 대시보드 (승객용 상단 요약) */
+    .status-dashboard { background: var(--card-bg); border-bottom: 1px solid var(--border-color); padding: 16px 20px; display: flex; justify-content: space-around; align-items: center; flex-shrink: 0; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+    .status-item { text-align: center; }
+    .status-label { font-size: 0.8rem; color: var(--text-muted); margin-bottom: 2px; }
+    .status-value { font-size: 1.1rem; font-weight: 700; color: var(--primary); }
+
+    /* Admin Floating Controls (Driver Only) */
     .driver-controls { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 5; background: var(--card-bg); padding: 12px 20px; border-radius: 30px; box-shadow: 0 4px 20px rgba(0,0,0,0.25); display: flex; gap: 10px; align-items: center; border: 1px solid var(--border-color); }
     .gps-status { display: flex; align-items: center; gap: 6px; font-size: 0.85rem; font-weight: 600; margin-right: 4px; }
     .dot { width: 10px; height: 10px; border-radius: 50%; background: #9ca3af; }
     .dot.active { background: #10b981; animation: pulse 1.5s infinite; }
     @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.4; } 100% { opacity: 1; } }
 
-    /* 실시간 속도 표시 오버레이 (맵 우측 상단 혹은 하단) */
-    .speed-overlay { position: absolute; top: 15px; right: 15px; z-index: 5; background: var(--card-bg); color: var(--text-color); padding: 8px 14px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.15); border: 1px solid var(--border-color); font-weight: 700; font-size: 0.95rem; display: flex; align-items: center; gap: 6px; }
-
-    /* Sidebar / Route Panel */
-    .sidebar { width: 360px; background-color: var(--card-bg); border-left: 1px solid var(--border-color); display: flex; flex-direction: column; z-index: 5; height: 100%; overflow: hidden; }
+    /* Sidebar / Route Panel (기사 모드용) */
+    .sidebar { width: 380px; background-color: var(--card-bg); border-left: 1px solid var(--border-color); display: flex; flex-direction: column; z-index: 5; height: 100%; overflow: hidden; }
     .sidebar-header { padding: 16px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; }
     .sidebar-header h2 { font-size: 1rem; color: var(--text-color); }
     .sidebar-admin-actions { padding: 10px 16px; background: var(--bg-color); border-bottom: 1px solid var(--border-color); display: flex; gap: 6px; justify-content: flex-end; flex-wrap: wrap; flex-shrink: 0; }
 
     /* 정류장 리스트 스크롤 영역 */
-    .stop-list { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 12px; min-height: 0; }
-    .stop-item { background: var(--bg-color); border: 1px solid var(--border-color); border-radius: 8px; padding: 12px; margin-bottom: 10px; position: relative; }
-    .stop-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
-    .stop-name { font-weight: 700; font-size: 0.95rem; color: var(--text-color); }
-    .stop-time { font-size: 0.8rem; color: var(--text-muted); background: var(--card-bg); padding: 2px 6px; border-radius: 4px; border: 1px solid var(--border-color); }
-    .stop-eta { font-size: 0.85rem; color: var(--primary); font-weight: 600; margin-top: 4px; display: flex; justify-content: space-between; }
-    .stop-actions { display: flex; gap: 4px; margin-top: 8px; flex-wrap: wrap; align-items: center; }
+    .stop-list { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 16px; min-height: 0; max-width: 800px; width: 100%; margin: 0 auto; }
+    .stop-item { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 10px; padding: 16px; margin-bottom: 12px; position: relative; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
+    .stop-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+    .stop-name { font-weight: 700; font-size: 1.05rem; color: var(--text-color); }
+    .stop-time { font-size: 0.85rem; color: var(--text-muted); background: var(--bg-color); padding: 3px 8px; border-radius: 4px; border: 1px solid var(--border-color); }
+    .stop-eta { font-size: 0.95rem; color: var(--primary); font-weight: 600; margin-top: 6px; display: flex; justify-content: space-between; }
+    .stop-actions { display: flex; gap: 4px; margin-top: 10px; flex-wrap: wrap; align-items: center; }
 
     /* Modals */
     .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: none; justify-content: center; align-items: center; z-index: 100; }
@@ -106,10 +112,7 @@
 
     /* Responsive */
     @media (max-width: 768px) {
-      .main-container { flex-direction: column; height: calc(100vh - 60px); }
-      .sidebar { width: 100%; height: 50%; order: 2; flex-shrink: 0; }
-      #map-container { height: 50%; order: 1; flex-shrink: 0; }
-      .driver-controls { bottom: 10px; width: 92%; justify-content: center; padding: 8px 12px; }
+      .sidebar { width: 100%; height: 100%; border-left: none; }
     }
   </style>
 </head>
@@ -119,7 +122,7 @@
   <header>
     <div class="logo-area">
       <span>🚌</span>
-      <h1>전세버스 실시간 위치 추적</h1>
+      <h1>실시간 전세버스 위치 추적</h1>
       <span id="user-badge" class="badge-passenger">승객 (조회 전용)</span>
     </div>
 
@@ -142,15 +145,30 @@
 
   <!-- Main Content -->
   <div class="main-container">
-    <!-- Map Container -->
+    
+    <!-- 1. 승객용 전체 화면 패널 (지도가 보이지 않고 리스트와 상태만 표시) -->
+    <div id="passenger-panel" class="passenger-panel">
+      <div class="status-dashboard">
+        <div class="status-item">
+          <div class="status-label">현재 버스 속도</div>
+          <div id="passenger-speed" class="status-value">0 km/h</div>
+        </div>
+        <div class="status-item">
+          <div class="status-label">GPS 수신 상태</div>
+          <div id="passenger-gps-status" class="status-value" style="color:var(--text-muted);">대기 중</div>
+        </div>
+      </div>
+      <div style="padding: 12px 16px 0 16px; max-width: 800px; width: 100%; margin: 0 auto; display: flex; justify-content: space-between; align-items: center;">
+        <h2 style="font-size: 1.1rem;">📍 전체 정류장 및 도착 예정 시간</h2>
+      </div>
+      <div id="stop-list-passenger" class="stop-list">
+        <!-- 승객용 정류장 리스트가 동적으로 삽입됩니다 -->
+      </div>
+    </div>
+
+    <!-- 2. Map Container (기사 로그인 시에만 나타남) -->
     <div id="map-container">
       <div id="map"></div>
-
-      <!-- 실시간 속도 표시 오버레이 (지도 우측 상단) -->
-      <div class="speed-overlay">
-        <span>🚐 속도:</span>
-        <span id="speed-display">0 km/h</span>
-      </div>
 
       <!-- 기사님 전용 GPS 컨트롤러 -->
       <div id="driver-controls" class="driver-controls" style="display: none;">
@@ -162,25 +180,24 @@
       </div>
     </div>
 
-    <!-- Sidebar: 노선 및 정류장 관리 -->
-    <div class="sidebar">
+    <!-- 3. Sidebar: 기사 모드일 때만 오른쪽에 정류장 관리 패널 표시 -->
+    <div id="driver-sidebar" class="sidebar" style="display: none;">
       <div class="sidebar-header">
-        <h2>📍 정류장 정보</h2>
-        <button id="btn-add-stop-modal" class="btn btn-primary" onclick="openAddStopModal()" style="display:none;">+ 정류장 추가</button>
+        <h2>📍 정류장 관리</h2>
+        <button id="btn-add-stop-modal" class="btn btn-primary" onclick="openAddStopModal()">+ 정류장 추가</button>
       </div>
       
-      <!-- 관리자 전용 노선 편집 버튼 영역 -->
-      <div id="sidebar-admin-actions" class="sidebar-admin-actions" style="display:none;">
+      <div id="sidebar-admin-actions" class="sidebar-admin-actions">
         <button class="btn btn-secondary" style="color:var(--text-color); font-size:0.75rem;" onclick="openAddRouteModal()">➕ 새 노선 추가</button>
         <button class="btn btn-secondary" style="color:var(--text-color); font-size:0.75rem;" onclick="openEditRouteModal()">✏️ 현재 노선명 수정</button>
         <button class="btn btn-secondary" style="color:var(--danger); font-size:0.75rem;" onclick="deleteCurrentRoute()">🗑️ 노선 삭제</button>
       </div>
 
-      <!-- 정류장 리스트 영역 -->
-      <div id="stop-list" class="stop-list">
-        <!-- 정류장 리스트가 동적으로 삽입됩니다 -->
+      <div id="stop-list-driver" class="stop-list" style="padding: 12px;">
+        <!-- 기사 모드용 정류장 리스트 -->
       </div>
     </div>
+
   </div>
 
   <!-- Modal 1: 기사님 로그인 -->
@@ -307,7 +324,7 @@
     let stopMarkers = [];
     let watchId = null;
     let currentBusLocation = null;
-    let currentBusSpeed = 0; // m/s 단위 속도
+    let currentBusSpeed = 0;
 
     window.onload = function() {
       if(!localStorage.getItem(ADMIN_PASSWORD_KEY)) {
@@ -426,26 +443,32 @@
       currentBusSpeed = speed;
       const busPos = new google.maps.LatLng(lat, lng);
 
-      // 화면 우측 상단 속도 표시 업데이트 (m/s를 km/h로 환산)
       const speedKmh = speed > 0 ? Math.round(speed * 3.6) : 0;
-      document.getElementById("speed-display").innerText = `${speedKmh} km/h`;
+      
+      // 속도 및 GPS 상태 대시보드 업데이트 (승객용)
+      document.getElementById("passenger-speed").innerText = `${speedKmh} km/h`;
+      const gpsStatusElem = document.getElementById("passenger-gps-status");
+      gpsStatusElem.innerText = "운행 중 (신호 수신 양호)";
+      gpsStatusElem.style.color = "var(--accent)";
 
-      if(!busMarker) {
-        busMarker = new google.maps.Marker({
-          position: busPos,
-          map: map,
-          title: "전세버스 위치",
-          icon: {
-            path: "M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z",
-            scale: 2,
-            fillColor: "#ef4444",
-            fillOpacity: 1,
-            strokeWeight: 2,
-            strokeColor: "#ffffff"
-          }
-        });
-      } else {
-        busMarker.setPosition(busPos);
+      if (map) {
+        if(!busMarker) {
+          busMarker = new google.maps.Marker({
+            position: busPos,
+            map: map,
+            title: "전세버스 위치",
+            icon: {
+              path: "M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z",
+              scale: 2,
+              fillColor: "#ef4444",
+              fillOpacity: 1,
+              strokeWeight: 2,
+              strokeColor: "#ffffff"
+            }
+          });
+        } else {
+          busMarker.setPosition(busPos);
+        }
       }
       calculateETA();
     }
@@ -462,7 +485,6 @@
       }
     }
 
-    // 속도와 거리를 반영한 현실적인 ETA 계산
     function calculateETA() {
       if(!currentBusLocation) return;
       const currentStops = routes[currentRouteId]?.stops || [];
@@ -473,23 +495,29 @@
         const distanceMeters = google.maps.geometry.spherical.computeDistanceBetween(busPos, stopPos);
         const distanceKm = (distanceMeters / 1000).toFixed(1);
 
-        const etaElem = document.getElementById(`eta-${stop.id}`);
-        if(etaElem) {
-          if(distanceMeters < 100) {
-            etaElem.innerHTML = `<span style="color:var(--accent);">🎉 잠시 후 도착!</span>`;
-          } else {
-            let estimatedMinutes = 0;
-            if (currentBusSpeed && currentBusSpeed > 1.39) { 
-              const speedKmh = currentBusSpeed * 3.6;
-              estimatedMinutes = Math.ceil((distanceMeters / 1000) / speedKmh * 60);
-            } else {
-              estimatedMinutes = Math.ceil((distanceMeters / 1000) / 30 * 60);
-            }
-            estimatedMinutes = Math.max(1, estimatedMinutes);
-            etaElem.innerText = `약 ${estimatedMinutes}분 소요 (${distanceKm} km)`;
-          }
-        }
+        // 승객용 및 기사용 각각의 ETA 엘리먼트 업데이트
+        updateEtaText(`eta-p-${stop.id}`, distanceMeters, distanceKm);
+        updateEtaText(`eta-d-${stop.id}`, distanceMeters, distanceKm);
       });
+    }
+
+    function updateEtaText(elementId, distanceMeters, distanceKm) {
+      const etaElem = document.getElementById(elementId);
+      if(!etaElem) return;
+
+      if(distanceMeters < 100) {
+        etaElem.innerHTML = `<span style="color:var(--accent);">🎉 잠시 후 도착!</span>`;
+      } else {
+        let estimatedMinutes = 0;
+        if (currentBusSpeed && currentBusSpeed > 1.39) { 
+          const speedKmh = currentBusSpeed * 3.6;
+          estimatedMinutes = Math.ceil((distanceMeters / 1000) / speedKmh * 60);
+        } else {
+          estimatedMinutes = Math.ceil((distanceMeters / 1000) / 30 * 60);
+        }
+        estimatedMinutes = Math.max(1, estimatedMinutes);
+        etaElem.innerText = `약 ${estimatedMinutes}분 소요 (${distanceKm} km)`;
+      }
     }
 
     function renderRouteSelect() {
@@ -510,8 +538,15 @@
       renderStopList();
     }
 
+    // 승객용과 기사용 리스트를 동시에 렌더링
     function renderStopList() {
-      const listContainer = document.getElementById("stop-list");
+      renderSingleStopList("stop-list-passenger", "p");
+      renderSingleStopList("stop-list-driver", "d");
+    }
+
+    function renderSingleStopList(containerId, prefix) {
+      const listContainer = document.getElementById(containerId);
+      if(!listContainer) return;
       listContainer.innerHTML = "";
 
       if(!routes[currentRouteId]) return;
@@ -535,9 +570,9 @@
           </div>
           <div class="stop-eta">
             <span>도착 예정:</span>
-            <span id="eta-${stop.id}">위치 수신 대기 중...</span>
+            <span id="eta-${prefix}-${stop.id}">위치 수신 대기 중...</span>
           </div>
-          ${isAdmin ? `
+          ${prefix === 'd' && isAdmin ? `
             <div class="stop-actions">
               <button class="btn btn-secondary" style="color:var(--text-color); font-size:0.75rem;" onclick="moveStop(${index}, -1)" ${index === 0 ? 'disabled style="opacity:0.4;"' : ''}>⬆️ 위로</button>
               <button class="btn btn-secondary" style="color:var(--text-color); font-size:0.75rem;" onclick="moveStop(${index}, 1)" ${index === currentStops.length - 1 ? 'disabled style="opacity:0.4;"' : ''}>⬇️ 아래로</button>
@@ -642,10 +677,14 @@
         document.getElementById("btn-login-modal").style.display = "none";
         document.getElementById("btn-change-pw-modal").style.display = "inline-flex";
         document.getElementById("btn-logout").style.display = "inline-flex";
+        
+        // 기사 모드 전환 시: 승객 패널 숨기고 지도와 관리자 사이드바 표시
+        document.getElementById("passenger-panel").style.display = "none";
+        document.getElementById("map-container").style.display = "block";
+        document.getElementById("driver-sidebar").style.display = "flex";
         document.getElementById("driver-controls").style.display = "flex";
-        document.getElementById("btn-add-stop-modal").style.display = "inline-flex";
-        document.getElementById("sidebar-admin-actions").style.display = "flex";
 
+        if(map) google.maps.event.trigger(map, "resize");
         renderStopList();
         alert("기사님 관리자 모드로 로그인되었습니다.");
       } else {
@@ -660,9 +699,12 @@
       document.getElementById("btn-login-modal").style.display = "inline-flex";
       document.getElementById("btn-change-pw-modal").style.display = "none";
       document.getElementById("btn-logout").style.display = "none";
+      
+      // 승객 모드 복귀: 지도 및 기사 사이드바 숨기고 승객 전용 패널 표시
+      document.getElementById("passenger-panel").style.display = "flex";
+      document.getElementById("map-container").style.display = "none";
+      document.getElementById("driver-sidebar").style.display = "none";
       document.getElementById("driver-controls").style.display = "none";
-      document.getElementById("btn-add-stop-modal").style.display = "none";
-      document.getElementById("sidebar-admin-actions").style.display = "none";
 
       if(watchId) toggleGPS();
       renderStopList();
