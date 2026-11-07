@@ -72,7 +72,7 @@
     /* Main Content Area */
     .main-container { display: flex; flex: 1; position: relative; overflow: hidden; height: calc(100vh - 85px); }
 
-    /* Map Area (기사 모드용) */
+    /* Map Area (기사 모드에서 토글 가능) */
     #map-container { flex: 1; position: relative; height: 100%; display: none; }
     #map { width: 100%; height: 100%; }
 
@@ -89,18 +89,20 @@
     .address-bar { background: var(--card-bg); border-bottom: 1px solid var(--border-color); padding: 8px 14px; font-size: 0.82rem; display: flex; align-items: center; gap: 6px; flex-shrink: 0; color: var(--text-color); font-weight: 500; }
     .address-bar span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-    /* Admin Floating Controls (Driver Only) */
-    .driver-controls { position: absolute; bottom: 15px; left: 50%; transform: translateX(-50%); z-index: 5; background: var(--card-bg); padding: 10px 16px; border-radius: 30px; box-shadow: 0 4px 20px rgba(0,0,0,0.25); display: flex; gap: 8px; align-items: center; border: 1px solid var(--border-color); }
-    .gps-status { display: flex; align-items: center; gap: 5px; font-size: 0.8rem; font-weight: 600; margin-right: 2px; }
+    /* Sidebar / Route Panel (기사 모드용) */
+    .sidebar { width: 100%; background-color: var(--card-bg); display: flex; flex-direction: column; z-index: 5; height: 100%; overflow: hidden; }
+    .sidebar-header { padding: 12px 14px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; }
+    .sidebar-header h2 { font-size: 0.95rem; color: var(--text-color); }
+
+    /* 기사 모드 상단 조작 컨트롤러 바 (위치 추적 및 운행 상태 버튼 이동 완료) */
+    .driver-control-bar { background: var(--bg-color); border-bottom: 1px solid var(--border-color); padding: 10px 14px; display: flex; flex-direction: column; gap: 8px; flex-shrink: 0; }
+    .driver-control-row { display: flex; justify-content: space-between; align-items: center; gap: 6px; flex-wrap: wrap; }
+    .gps-status-box { display: flex; align-items: center; gap: 6px; font-size: 0.8rem; font-weight: 600; }
     .dot { width: 8px; height: 8px; border-radius: 50%; background: #9ca3af; }
     .dot.active { background: #10b981; animation: pulse 1.5s infinite; }
     @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.4; } 100% { opacity: 1; } }
 
-    /* Sidebar / Route Panel (기사 모드용) */
-    .sidebar { width: 380px; background-color: var(--card-bg); border-left: 1px solid var(--border-color); display: flex; flex-direction: column; z-index: 5; height: 100%; overflow: hidden; }
-    .sidebar-header { padding: 14px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; }
-    .sidebar-header h2 { font-size: 0.95rem; color: var(--text-color); }
-    .sidebar-admin-actions { padding: 8px 14px; background: var(--bg-color); border-bottom: 1px solid var(--border-color); display: flex; gap: 5px; justify-content: flex-end; flex-wrap: wrap; flex-shrink: 0; }
+    .sidebar-admin-actions { padding: 8px 14px; background: var(--card-bg); border-bottom: 1px solid var(--border-color); display: flex; gap: 5px; justify-content: flex-end; flex-wrap: wrap; flex-shrink: 0; }
 
     /* 정류장 리스트 스크롤 영역 */
     .stop-list { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 12px; max-width: 800px; width: 100%; margin: 0 auto; }
@@ -121,13 +123,14 @@
     .form-group input { width: 100%; padding: 8px 10px; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-color); color: var(--text-color); font-size: 0.88rem; }
     .modal-actions { display: flex; justify-content: flex-end; gap: 6px; margin-top: 15px; }
 
-    /* 데스크톱 환경에서는 헤더를 가로 한 줄로 배치 */
+    /* 데스크톱 환경 레이아웃 */
     @media (min-width: 769px) {
       header { flex-direction: row; padding: 12px 20px; }
       .header-bottom { width: auto; gap: 10px; }
       .route-selector { width: 220px; flex: initial; }
       .logo-area h1 { max-width: none; font-size: 1.1rem; }
       .main-container { height: calc(100vh - 60px); }
+      .sidebar { width: 400px; border-left: 1px solid var(--border-color); }
     }
   </style>
 </head>
@@ -138,7 +141,7 @@
     <div class="header-top">
       <div class="logo-area">
         <span>🚌</span>
-        <h1>전세버스 실시간 위치 추적</h1>
+        <h1>실시간 전세버스 위치 추적</h1>
       </div>
       <span id="user-badge" class="badge-passenger">승객 (조회 전용)</span>
     </div>
@@ -153,7 +156,7 @@
         <!-- 다크/라이트 모드 버튼 -->
         <button id="btn-theme" class="btn-theme" onclick="toggleTheme()" title="테마 변경">☀️</button>
 
-        <!-- 관리자 로그인 / 로그아웃 / 비밀번호 변경 / 공유 -->
+        <!-- 관리자 로그인 / 로그아웃 / 비번변경 / 공유 -->
         <button id="btn-login-modal" class="btn btn-secondary" onclick="openLoginModal()">기사님 로그인</button>
         <button id="btn-change-pw-modal" class="btn btn-secondary" onclick="openChangePwModal()" style="display:none;">🔑 비번변경</button>
         <button id="btn-logout" class="btn btn-secondary" onclick="logout()" style="display:none;">로그아웃</button>
@@ -196,29 +199,36 @@
       </div>
     </div>
 
-    <!-- Map Container (기사 로그인 시에만 표시) -->
+    <!-- Map Container (기사 모드에서 켜고 끌 수 있음) -->
     <div id="map-container">
       <div id="map"></div>
-
-      <!-- 기사님 전용 GPS 컨트롤러 및 운행 상태 설정 버튼 -->
-      <div id="driver-controls" class="driver-controls" style="display: none;">
-        <div class="gps-status">
-          <div id="gps-dot" class="dot"></div>
-          <span id="gps-text">GPS 정지됨</span>
-        </div>
-        <button id="btn-toggle-gps" class="btn btn-primary" onclick="toggleGPS()">📡 위치 추적 시작</button>
-        <button id="btn-toggle-trip" class="btn btn-danger" onclick="toggleTripStatus()">🔴 운행 종료 중</button>
-      </div>
     </div>
 
-    <!-- Sidebar: 기사 모드용 정류장 관리 패널 -->
+    <!-- Sidebar: 기사 모드용 패널 (위치 추적, 운행 상태, 정류장 관리 통합) -->
     <div id="driver-sidebar" class="sidebar" style="display: none;">
       <div class="sidebar-header">
-        <h2>📍 정류장 관리</h2>
-        <button id="btn-add-stop-modal" class="btn btn-primary" onclick="openAddStopModal()">+ 정류장 추가</button>
+        <h2>📍 기사 운행 및 정류장 관리</h2>
+        <button class="btn btn-primary" onclick="openAddStopModal()">+ 정류장 추가</button>
+      </div>
+
+      <!-- 상단으로 이동한 기사 조작 컨트롤러 바 -->
+      <div class="driver-control-bar">
+        <div class="driver-control-row">
+          <div class="gps-status-box">
+            <div id="gps-dot" class="dot"></div>
+            <span id="gps-text">GPS 정지됨</span>
+          </div>
+          <div style="display: flex; gap: 5px;">
+            <button id="btn-toggle-map" class="btn btn-secondary" style="color: var(--text-color); background: var(--card-bg); border: 1px solid var(--border-color);" onclick="toggleMapVisibility()">🗺️ 지도 켜기</button>
+          </div>
+        </div>
+        <div class="driver-control-row">
+          <button id="btn-toggle-gps" class="btn btn-primary" style="flex:1;" onclick="toggleGPS()">📡 위치 추적 시작</button>
+          <button id="btn-toggle-trip" class="btn btn-danger" style="flex:1;" onclick="toggleTripStatus()">🔴 운행 종료 중</button>
+        </div>
       </div>
       
-      <div id="sidebar-admin-actions" class="sidebar-admin-actions">
+      <div class="sidebar-admin-actions">
         <button class="btn btn-secondary" style="color:var(--text-color); font-size:0.75rem;" onclick="openAddRouteModal()">➕ 새 노선 추가</button>
         <button class="btn btn-secondary" style="color:var(--text-color); font-size:0.75rem;" onclick="openEditRouteModal()">✏️ 노선명 수정</button>
         <button class="btn btn-secondary" style="color:var(--danger); font-size:0.75rem;" onclick="deleteCurrentRoute()">🗑️ 노선 삭제</button>
@@ -284,13 +294,13 @@
       </div>
       <div class="form-group">
         <label>위도 (Latitude)</label>
-        <input type="text" id="stop-lat" placeholder="지도를 클릭하면 자동 입력됩니다">
+        <input type="text" id="stop-lat" placeholder="지도를 켜고 클릭하면 자동 입력됩니다">
       </div>
       <div class="form-group">
         <label>경도 (Longitude)</label>
-        <input type="text" id="stop-lng" placeholder="지도를 클릭하면 자동 입력됩니다">
+        <input type="text" id="stop-lng" placeholder="지도를 켜고 클릭하면 자동 입력됩니다">
       </div>
-      <p style="font-size:0.75rem; color:var(--text-muted); margin-top:4px;">* 지도 위를 클릭하면 해당 위치의 위도/경도가 자동 입력됩니다.</p>
+      <p style="font-size:0.75rem; color:var(--text-muted); margin-top:4px;">* 지도를 켠 후 위를 클릭하면 위도/경도가 자동 입력됩니다.</p>
       <div class="modal-actions">
         <button class="btn btn-secondary" style="color:var(--text-color);" onclick="closeModal('modal-stop')">취소</button>
         <button class="btn btn-primary" onclick="saveStop()">저장</button>
@@ -336,6 +346,7 @@
     let isAdmin = false;
     let isDarkTheme = false;
     let isTripActive = false;
+    let isMapVisible = false; // 지도 표시 여부 플래그
 
     let defaultRoutes = {
       "route-1": {
@@ -434,6 +445,27 @@
       });
 
       updateMapRoute();
+    }
+
+    // 지도 켜기/끄기 토글 함수
+    function toggleMapVisibility() {
+      if(!isAdmin) return;
+      isMapVisible = !isMapVisible;
+      const mapContainer = document.getElementById("map-container");
+      const mapBtn = document.getElementById("btn-toggle-map");
+
+      if (isMapVisible) {
+        mapContainer.style.display = "block";
+        mapBtn.innerText = "🗺️ 지도 끄기";
+        mapBtn.style.background = "var(--primary)";
+        mapBtn.style.color = "white";
+        if (map) google.maps.event.trigger(map, "resize");
+      } else {
+        mapContainer.style.display = "none";
+        mapBtn.innerText = "🗺️ 지도 켜기";
+        mapBtn.style.background = "var(--card-bg)";
+        mapBtn.style.color = "var(--text-color)";
+      }
     }
 
     function updateMapRoute() {
@@ -772,11 +804,11 @@
         document.getElementById("btn-logout").style.display = "inline-flex";
         
         document.getElementById("passenger-panel").style.display = "none";
-        document.getElementById("map-container").style.display = "block";
+        // 기사 모드 진입 시 지도는 기본 꺼진 상태로 시작 (원할 때 켜기 버튼 클릭)
+        isMapVisible = false;
+        document.getElementById("map-container").style.display = "none";
         document.getElementById("driver-sidebar").style.display = "flex";
-        document.getElementById("driver-controls").style.display = "flex";
 
-        if(map) google.maps.event.trigger(map, "resize");
         renderStopList();
         alert("기사님 관리자 모드로 로그인되었습니다.");
       } else {
@@ -795,7 +827,6 @@
       document.getElementById("passenger-panel").style.display = "flex";
       document.getElementById("map-container").style.display = "none";
       document.getElementById("driver-sidebar").style.display = "none";
-      document.getElementById("driver-controls").style.display = "none";
 
       if(watchId) toggleGPS();
       renderStopList();
