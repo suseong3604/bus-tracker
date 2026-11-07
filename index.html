@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>실시간 전세버스 위치 추적 및 노선 관리 시스템</title>
 
-  <!-- Google Maps API (Geocoder 포함) -->
+  <!-- Google Maps API (places, geometry, geocoder 포함) -->
   <script src="https://maps.googleapis.com/maps/api/js?libraries=places,geometry,geocoder"></script>
 
   <!-- Firebase SDK (v9/v10 Compat Library) -->
@@ -72,7 +72,7 @@
     /* Main Content Area */
     .main-container { display: flex; flex: 1; position: relative; overflow: hidden; height: calc(100vh - 85px); }
 
-    /* Map Area (기사 모드에서 토글 가능) */
+    /* Map Area */
     #map-container { flex: 1; position: relative; height: 100%; display: none; }
     #map { width: 100%; height: 100%; }
 
@@ -89,12 +89,11 @@
     .address-bar { background: var(--card-bg); border-bottom: 1px solid var(--border-color); padding: 8px 14px; font-size: 0.82rem; display: flex; align-items: center; gap: 6px; flex-shrink: 0; color: var(--text-color); font-weight: 500; }
     .address-bar span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-    /* Sidebar / Route Panel (기사 모드용) */
+    /* Sidebar / Route Panel */
     .sidebar { width: 100%; background-color: var(--card-bg); display: flex; flex-direction: column; z-index: 5; height: 100%; overflow: hidden; }
     .sidebar-header { padding: 12px 14px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; }
     .sidebar-header h2 { font-size: 0.95rem; color: var(--text-color); }
 
-    /* 기사 모드 상단 조작 컨트롤러 바 (위치 추적 및 운행 상태 버튼 이동 완료) */
     .driver-control-bar { background: var(--bg-color); border-bottom: 1px solid var(--border-color); padding: 10px 14px; display: flex; flex-direction: column; gap: 8px; flex-shrink: 0; }
     .driver-control-row { display: flex; justify-content: space-between; align-items: center; gap: 6px; flex-wrap: wrap; }
     .gps-status-box { display: flex; align-items: center; gap: 6px; font-size: 0.8rem; font-weight: 600; }
@@ -106,7 +105,12 @@
 
     /* 정류장 리스트 스크롤 영역 */
     .stop-list { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 12px; max-width: 800px; width: 100%; margin: 0 auto; }
-    .stop-item { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 10px; padding: 14px; margin-bottom: 10px; position: relative; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
+    .stop-item { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 10px; padding: 14px; margin-bottom: 10px; position: relative; box-shadow: 0 2px 4px rgba(0,0,0,0.02); transition: all 0.3s ease; }
+    
+    /* 지나간 정류장 흑백 및 흐리게 처리 스타일 */
+    .stop-item.passed { opacity: 0.45; filter: grayscale(100%); background-color: var(--bg-color); }
+    .stop-item.passed .stop-name { text-decoration: line-through; }
+
     .stop-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; gap: 6px; }
     .stop-name { font-weight: 700; font-size: 0.98rem; color: var(--text-color); }
     .stop-time { font-size: 0.78rem; color: var(--text-muted); background: var(--bg-color); padding: 2px 6px; border-radius: 4px; border: 1px solid var(--border-color); white-space: nowrap; flex-shrink: 0; }
@@ -123,7 +127,6 @@
     .form-group input { width: 100%; padding: 8px 10px; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-color); color: var(--text-color); font-size: 0.88rem; }
     .modal-actions { display: flex; justify-content: flex-end; gap: 6px; margin-top: 15px; }
 
-    /* 데스크톱 환경 레이아웃 */
     @media (min-width: 769px) {
       header { flex-direction: row; padding: 12px 20px; }
       .header-bottom { width: auto; gap: 10px; }
@@ -147,16 +150,12 @@
     </div>
 
     <div class="header-bottom">
-      <!-- 노선 선택 -->
       <div class="route-selector">
         <select id="route-select" onchange="switchRoute(this.value)"></select>
       </div>
 
       <div class="header-actions">
-        <!-- 다크/라이트 모드 버튼 -->
         <button id="btn-theme" class="btn-theme" onclick="toggleTheme()" title="테마 변경">☀️</button>
-
-        <!-- 관리자 로그인 / 로그아웃 / 비번변경 / 공유 -->
         <button id="btn-login-modal" class="btn btn-secondary" onclick="openLoginModal()">기사님 로그인</button>
         <button id="btn-change-pw-modal" class="btn btn-secondary" onclick="openChangePwModal()" style="display:none;">🔑 비번변경</button>
         <button id="btn-logout" class="btn btn-secondary" onclick="logout()" style="display:none;">로그아웃</button>
@@ -185,7 +184,6 @@
         </div>
       </div>
 
-      <!-- 현재 위치 주소 안내 바 -->
       <div class="address-bar">
         <span>📍 버스 위치:</span>
         <span id="passenger-address" style="color: var(--text-muted); font-weight: normal;">위치 정보 수신 대기 중...</span>
@@ -194,24 +192,21 @@
       <div style="padding: 10px 14px 0 14px; max-width: 800px; width: 100%; margin: 0 auto; display: flex; justify-content: space-between; align-items: center;">
         <h2 style="font-size: 1rem;">📍 전체 정류장 및 도착 예정 시간</h2>
       </div>
-      <div id="stop-list-passenger" class="stop-list">
-        <!-- 승객용 정류장 리스트 -->
-      </div>
+      <div id="stop-list-passenger" class="stop-list"></div>
     </div>
 
-    <!-- Map Container (기사 모드에서 켜고 끌 수 있음) -->
+    <!-- Map Container -->
     <div id="map-container">
       <div id="map"></div>
     </div>
 
-    <!-- Sidebar: 기사 모드용 패널 (위치 추적, 운행 상태, 정류장 관리 통합) -->
+    <!-- Sidebar: 기사 모드용 패널 -->
     <div id="driver-sidebar" class="sidebar" style="display: none;">
       <div class="sidebar-header">
         <h2>📍 기사 운행 및 정류장 관리</h2>
         <button class="btn btn-primary" onclick="openAddStopModal()">+ 정류장 추가</button>
       </div>
 
-      <!-- 상단으로 이동한 기사 조작 컨트롤러 바 -->
       <div class="driver-control-bar">
         <div class="driver-control-row">
           <div class="gps-status-box">
@@ -234,9 +229,7 @@
         <button class="btn btn-secondary" style="color:var(--danger); font-size:0.75rem;" onclick="deleteCurrentRoute()">🗑️ 노선 삭제</button>
       </div>
 
-      <div id="stop-list-driver" class="stop-list" style="padding: 10px;">
-        <!-- 기사 모드용 정류장 리스트 -->
-      </div>
+      <div id="stop-list-driver" class="stop-list" style="padding: 10px;"></div>
     </div>
 
   </div>
@@ -293,14 +286,20 @@
         <input type="text" id="stop-scheduled-time" placeholder="예: 08:30">
       </div>
       <div class="form-group">
+        <label>주소/장소 검색 (선택사항)</label>
+        <div style="display: flex; gap: 5px;">
+          <input type="text" id="stop-search-address" placeholder="예: 수원역, 권선구 동수원로">
+          <button type="button" class="btn btn-primary" onclick="searchAddressAndFillCoords()">주소 검색</button>
+        </div>
+      </div>
+      <div class="form-group">
         <label>위도 (Latitude)</label>
-        <input type="text" id="stop-lat" placeholder="지도를 켜고 클릭하면 자동 입력됩니다">
+        <input type="text" id="stop-lat" placeholder="주소 검색 또는 지도 클릭 시 자동 입력">
       </div>
       <div class="form-group">
         <label>경도 (Longitude)</label>
-        <input type="text" id="stop-lng" placeholder="지도를 켜고 클릭하면 자동 입력됩니다">
+        <input type="text" id="stop-lng" placeholder="주소 검색 또는 지도 클릭 시 자동 입력">
       </div>
-      <p style="font-size:0.75rem; color:var(--text-muted); margin-top:4px;">* 지도를 켠 후 위를 클릭하면 위도/경도가 자동 입력됩니다.</p>
       <div class="modal-actions">
         <button class="btn btn-secondary" style="color:var(--text-color);" onclick="closeModal('modal-stop')">취소</button>
         <button class="btn btn-primary" onclick="saveStop()">저장</button>
@@ -346,7 +345,7 @@
     let isAdmin = false;
     let isDarkTheme = false;
     let isTripActive = false;
-    let isMapVisible = false; // 지도 표시 여부 플래그
+    let isMapVisible = false;
 
     let defaultRoutes = {
       "route-1": {
@@ -369,6 +368,9 @@
     let currentBusLocation = null;
     let currentBusSpeed = 0;
     let lastCloudSendTime = 0;
+
+    // 각 정류장의 통과 시각을 기억하는 객체 (예: { stopId: timestamp })
+    let passedStopsTime = JSON.parse(localStorage.getItem('passed_stops_time')) || {};
 
     window.onload = function() {
       if(!localStorage.getItem(ADMIN_PASSWORD_KEY)) {
@@ -447,7 +449,26 @@
       updateMapRoute();
     }
 
-    // 지도 켜기/끄기 토글 함수
+    function searchAddressAndFillCoords() {
+      const query = document.getElementById("stop-search-address").value.trim();
+      if(!query) {
+        alert("검색할 주소나 장소 이름을 입력해주세요.");
+        return;
+      }
+      if(!geocoder) return;
+
+      geocoder.geocode({ address: query }, (results, status) => {
+        if (status === "OK" && results[0]) {
+          const loc = results[0].geometry.location;
+          document.getElementById("stop-lat").value = loc.lat().toFixed(6);
+          document.getElementById("stop-lng").value = loc.lng().toFixed(6);
+          alert(`성공적으로 위치를 찾았습니다!\n(${results[0].formatted_address})`);
+        } else {
+          alert("해당 주소를 찾지 못했습니다. 정확한 명칭을 입력해 주세요.");
+        }
+      });
+    }
+
     function toggleMapVisibility() {
       if(!isAdmin) return;
       isMapVisible = !isMapVisible;
@@ -615,6 +636,8 @@
     function calculateETA() {
       if(!currentBusLocation) return;
       const currentStops = routes[currentRouteId]?.stops || [];
+      const now = Date.now();
+      const THREE_HOURS = 3 * 60 * 60 * 1000; // 3시간 (밀리초)
 
       currentStops.forEach(stop => {
         const stopPos = new google.maps.LatLng(stop.lat, stop.lng);
@@ -622,9 +645,42 @@
         const distanceMeters = google.maps.geometry.spherical.computeDistanceBetween(busPos, stopPos);
         const distanceKm = (distanceMeters / 1000).toFixed(1);
 
-        updateEtaText(`eta-p-${stop.id}`, distanceMeters, distanceKm);
-        updateEtaText(`eta-d-${stop.id}`, distanceMeters, distanceKm);
+        // 100m 이내로 접근하면 통과한 것으로 판단하여 시간 기록
+        if (distanceMeters < 100) {
+          if (!passedStopsTime[stop.id]) {
+            passedStopsTime[stop.id] = now;
+            localStorage.setItem('passed_stops_time', JSON.stringify(passedStopsTime));
+          }
+        }
+
+        // 통과 기록이 있고, 아직 3시간이 지나지 않았는지 확인
+        const passedTime = passedStopsTime[stop.id];
+        const isPassed = passedTime && (now - passedTime < THREE_HOURS);
+
+        // 3시간이 지나면 자동으로 기록 삭제 후 원래 상태 복원
+        if (passedTime && (now - passedTime >= THREE_HOURS)) {
+          delete passedStopsTime[stop.id];
+          localStorage.setItem('passed_stops_time', JSON.stringify(passedStopsTime));
+        }
+
+        // UI 적용 (승객용, 기사용)
+        applyPassStatusToUI(stop.id, 'p', isPassed, distanceMeters, distanceKm);
+        applyPassStatusToUI(stop.id, 'd', isPassed, distanceMeters, distanceKm);
       });
+    }
+
+    function applyPassStatusToUI(stopId, prefix, isPassed, distanceMeters, distanceKm) {
+      const cardElem = document.getElementById(`stop-card-${prefix}-${stopId}`);
+      const etaElem = document.getElementById(`eta-${prefix}-${stopId}`);
+      if (!cardElem || !etaElem) return;
+
+      if (isPassed) {
+        cardElem.classList.add("passed");
+        etaElem.innerHTML = `<span style="color:var(--text-muted);">✅ 통과 완료</span>`;
+      } else {
+        cardElem.classList.remove("passed");
+        updateEtaText(`eta-${prefix}-${stopId}`, distanceMeters, distanceKm);
+      }
     }
 
     function updateEtaText(elementId, distanceMeters, distanceKm) {
@@ -681,13 +737,14 @@
 
       const currentStops = routes[currentRouteId].stops;
       if(currentStops.length === 0) {
-        listContainer.innerHTML = `<p style="text-align:center; color:var(--text-muted); margin-top:20px;">등록된 정류장이 없습니다.</p>`;
+        listContainer.html = `<p style="text-align:center; color:var(--text-muted); margin-top:20px;">등록된 정류장이 없습니다.</p>`;
         return;
       }
 
       currentStops.forEach((stop, index) => {
         const div = document.createElement("div");
         div.className = "stop-item";
+        div.id = `stop-card-${prefix}-${stop.id}`;
         div.innerHTML = `
           <div class="stop-header">
             <span class="stop-name">${index + 1}. ${stop.name}</span>
@@ -804,7 +861,6 @@
         document.getElementById("btn-logout").style.display = "inline-flex";
         
         document.getElementById("passenger-panel").style.display = "none";
-        // 기사 모드 진입 시 지도는 기본 꺼진 상태로 시작 (원할 때 켜기 버튼 클릭)
         isMapVisible = false;
         document.getElementById("map-container").style.display = "none";
         document.getElementById("driver-sidebar").style.display = "flex";
@@ -903,6 +959,7 @@
       document.getElementById("stop-edit-id").value = "";
       document.getElementById("stop-name").value = "";
       document.getElementById("stop-scheduled-time").value = "";
+      document.getElementById("stop-search-address").value = "";
       document.getElementById("stop-lat").value = "";
       document.getElementById("stop-lng").value = "";
       document.getElementById("modal-stop").classList.add("active");
@@ -917,6 +974,7 @@
       document.getElementById("stop-edit-id").value = stop.id;
       document.getElementById("stop-name").value = stop.name;
       document.getElementById("stop-scheduled-time").value = stop.scheduledTime || "";
+      document.getElementById("stop-search-address").value = "";
       document.getElementById("stop-lat").value = stop.lat;
       document.getElementById("stop-lng").value = stop.lng;
       document.getElementById("modal-stop").classList.add("active");
@@ -931,7 +989,7 @@
       const lng = parseFloat(document.getElementById("stop-lng").value);
 
       if(!name || isNaN(lat) || isNaN(lng)) {
-        alert("올바른 정류장 이름과 좌표를 입력해주세요.");
+        alert("올바른 정류장 이름과 좌표(위도/경도)를 입력해주세요.");
         return;
       }
 
