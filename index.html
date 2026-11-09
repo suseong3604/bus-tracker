@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>실시간 전세버스 위치 추적 및 노선 관리 시스템</title>
+  <title>실시간 전세버스 도착 정보 (베타)</title>
 
   <!-- Google Maps API (places, geometry, geocoder 포함) -->
   <script src="https://maps.googleapis.com/maps/api/js?libraries=places,geometry,geocoder"></script>
@@ -49,14 +49,17 @@
     .header-top { display: flex; justify-content: space-between; align-items: center; width: 100%; }
     .logo-area { display: flex; align-items: center; gap: 6px; overflow: hidden; }
     .logo-area span:first-child { font-size: 1.2rem; }
-    .logo-area h1 { font-size: 0.95rem; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 170px; }
+    .logo-area h1 { font-size: 0.95rem; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 220px; }
     
     .badge-driver { background: #e11d48; color: white; padding: 2px 6px; border-radius: 10px; font-size: 0.7rem; font-weight: bold; white-space: nowrap; }
     .badge-passenger { background: #059669; color: white; padding: 2px 6px; border-radius: 10px; font-size: 0.7rem; font-weight: bold; white-space: nowrap; }
 
     .header-bottom { display: flex; justify-content: space-between; align-items: center; width: 100%; gap: 6px; }
-    .route-selector { flex: 1; min-width: 0; }
+    
+    .route-selector { flex: 1; min-width: 0; display: none; }
     .route-selector select { width: 100%; background: var(--card-bg); color: var(--text-color); border: 1px solid var(--border-color); padding: 5px 8px; border-radius: 6px; font-size: 0.85rem; font-weight: 600; cursor: pointer; text-overflow: ellipsis; }
+
+    .passenger-route-title { font-size: 0.9rem; font-weight: 700; color: var(--accent); display: flex; align-items: center; gap: 5px; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
     .header-actions { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
 
@@ -130,7 +133,7 @@
     @media (min-width: 769px) {
       header { flex-direction: row; padding: 12px 20px; }
       .header-bottom { width: auto; gap: 10px; }
-      .route-selector { width: 220px; flex: initial; }
+      .route-selector, .passenger-route-title { width: 220px; flex: initial; }
       .logo-area h1 { max-width: none; font-size: 1.1rem; }
       .main-container { height: calc(100vh - 60px); }
       .sidebar { width: 400px; border-left: 1px solid var(--border-color); }
@@ -144,13 +147,17 @@
     <div class="header-top">
       <div class="logo-area">
         <span>🚌</span>
-        <h1>실시간 전세버스 위치 추적</h1>
+        <h1>실시간 전세버스 도착 정보 (베타)</h1>
       </div>
       <span id="user-badge" class="badge-passenger">승객 (조회 전용)</span>
     </div>
 
     <div class="header-bottom">
-      <div class="route-selector">
+      <div id="passenger-route-title" class="passenger-route-title">
+        <span>🎯 노선: 로딩 중...</span>
+      </div>
+
+      <div id="driver-route-selector" class="route-selector">
         <select id="route-select" onchange="switchRoute(this.value)"></select>
       </div>
 
@@ -376,7 +383,6 @@
     let passedStopsTime = JSON.parse(localStorage.getItem('passed_stops_time')) || {};
 
     window.onload = function() {
-      // 기기별로 비밀번호 설정이 안 되어 있거나 초기화된 경우 기본 비밀번호 '041218'로 강제 설정
       if(!localStorage.getItem(ADMIN_PASSWORD_KEY) || localStorage.getItem(ADMIN_PASSWORD_KEY) === '1234') {
         localStorage.setItem(ADMIN_PASSWORD_KEY, '041218');
       }
@@ -662,7 +668,7 @@
       if(!currentBusLocation) return;
       const currentStops = routes[currentRouteId]?.stops || [];
       const now = Date.now();
-      const THREE_HOURS = 3 * 60 * 60 * 1000;
+      const ONE_HOUR = 1 * 60 * 60 * 1000; // 1시간 (밀리초 단위)
 
       currentStops.forEach(stop => {
         const stopPos = new google.maps.LatLng(stop.lat, stop.lng);
@@ -678,9 +684,10 @@
         }
 
         const passedTime = passedStopsTime[stop.id];
-        const isPassed = passedTime && (now - passedTime < THREE_HOURS);
+        const isPassed = passedTime && (now - passedTime < ONE_HOUR);
 
-        if (passedTime && (now - passedTime >= THREE_HOURS)) {
+        // 1시간이 지나면 기록을 지우고 원래 상태로 복원
+        if (passedTime && (now - passedTime >= ONE_HOUR)) {
           delete passedStopsTime[stop.id];
           localStorage.setItem('passed_stops_time', JSON.stringify(passedStopsTime));
         }
@@ -733,10 +740,16 @@
         if(key === currentRouteId) opt.selected = true;
         select.appendChild(opt);
       });
+
+      const passengerTitle = document.getElementById("passenger-route-title");
+      if (routes[currentRouteId]) {
+        passengerTitle.innerHTML = `<span>🎯 노선: ${routes[currentRouteId].name}</span>`;
+      }
     }
 
     function switchRoute(routeId) {
       currentRouteId = routeId;
+      renderRouteSelect();
       updateMapRoute();
       renderStopList();
     }
@@ -881,6 +894,9 @@
         document.getElementById("btn-change-pw-modal").style.display = "inline-flex";
         document.getElementById("btn-logout").style.display = "inline-flex";
         
+        document.getElementById("passenger-route-title").style.display = "none";
+        document.getElementById("driver-route-selector").style.display = "block";
+
         document.getElementById("passenger-panel").style.display = "none";
         isMapVisible = false;
         document.getElementById("map-container").style.display = "none";
@@ -901,6 +917,9 @@
       document.getElementById("btn-change-pw-modal").style.display = "none";
       document.getElementById("btn-logout").style.display = "none";
       
+      document.getElementById("passenger-route-title").style.display = "flex";
+      document.getElementById("driver-route-selector").style.display = "none";
+
       document.getElementById("passenger-panel").style.display = "flex";
       document.getElementById("map-container").style.display = "none";
       document.getElementById("driver-sidebar").style.display = "none";
