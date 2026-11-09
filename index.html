@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>실시간 전세버스 도착 정보 (베타)</title>
+  <title>실시간 전세버스 도착 정보(베타) 경기70사5013</title>
 
   <!-- Google Maps API (places, geometry, geocoder 포함) -->
   <script src="https://maps.googleapis.com/maps/api/js?libraries=places,geometry,geocoder"></script>
@@ -49,12 +49,16 @@
     /* Header 모바일 최적화 */
     header { background-color: var(--header-bg); color: var(--header-text); padding: 10px 14px; display: flex; flex-direction: column; gap: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.15); z-index: 10; flex-shrink: 0; }
     .header-top { display: flex; justify-content: space-between; align-items: center; width: 100%; }
-    .logo-area { display: flex; align-items: center; gap: 6px; overflow: hidden; }
-    .logo-area span:first-child { font-size: 1.2rem; }
-    .logo-area h1 { font-size: 0.95rem; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 220px; }
+    .logo-area { display: flex; align-items: center; gap: 6px; overflow: hidden; flex: 1; min-width: 0; }
+    .logo-area span:first-child { font-size: 1.2rem; flex-shrink: 0; }
     
-    .badge-driver { background: #e11d48; color: white; padding: 2px 6px; border-radius: 10px; font-size: 0.7rem; font-weight: bold; white-space: nowrap; }
-    .badge-passenger { background: #059669; color: white; padding: 2px 6px; border-radius: 10px; font-size: 0.7rem; font-weight: bold; white-space: nowrap; }
+    /* 타이틀 및 차량번호 모바일 최적화 스타일 */
+    .header-title-box { display: flex; align-items: baseline; gap: 5px; flex-wrap: wrap; overflow: hidden; }
+    .header-title-main { font-size: 0.92rem; font-weight: 700; white-space: nowrap; }
+    .header-title-sub { font-size: 0.78rem; font-weight: 500; opacity: 0.88; color: #93c5fd; white-space: nowrap; }
+
+    .badge-driver { background: #e11d48; color: white; padding: 2px 6px; border-radius: 10px; font-size: 0.7rem; font-weight: bold; white-space: nowrap; margin-left: 4px; }
+    .badge-passenger { background: #059669; color: white; padding: 2px 6px; border-radius: 10px; font-size: 0.7rem; font-weight: bold; white-space: nowrap; margin-left: 4px; }
 
     .header-bottom { display: flex; justify-content: space-between; align-items: center; width: 100%; gap: 6px; }
     
@@ -64,9 +68,10 @@
     .header-actions { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
 
     /* 공지사항 롤링 배너 */
-    .notice-banner { background: #fef3c7; color: #92400e; border-bottom: 1px solid #f59e0b; padding: 8px 14px; font-size: 0.82rem; font-weight: 600; display: flex; align-items: center; gap: 8px; flex-shrink: 0; overflow: hidden; }
+    .notice-banner { background: #fef3c7; color: #92400e; border-bottom: 1px solid #f59e0b; padding: 8px 14px; font-size: 0.82rem; font-weight: 600; display: flex; align-items: flex-start; gap: 6px; flex-shrink: 0; line-height: 1.4; word-break: break-all; }
     [data-theme="dark"] .notice-banner { background: #451a03; color: #fde68a; border-bottom-color: #b45309; }
-    .notice-content { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; animation: fadeInOut 0.5s ease-in-out; }
+    .notice-label { flex-shrink: 0; white-space: nowrap; }
+    .notice-content { flex: 1; white-space: pre-wrap; word-wrap: break-word; }
 
     /* Buttons */
     .btn { padding: 5px 10px; border-radius: 6px; border: none; font-size: 0.78rem; font-weight: 600; cursor: pointer; transition: all 0.2s; display: inline-flex; align-items: center; gap: 3px; white-space: nowrap; }
@@ -104,7 +109,7 @@
     .dot.active { background: #10b981; animation: pulse 1.5s infinite; }
     @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.4; } 100% { opacity: 1; } }
 
-    .sidebar-admin-actions { padding: 8px 14px; background: var(--card-bg); border-bottom: 1px solid var(--border-color); display: flex; gap: 5px; justify-content: flex-end; flex-wrap: wrap; flex-shrink: 0; }
+    .sidebar-admin-actions { padding: 8px 14px; background: var(--card-bg); border-bottom: 1px solid var(--border-color); display: flex; gap: 4px; justify-content: flex-end; flex-wrap: wrap; flex-shrink: 0; }
 
     .stop-list { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 12px 14px 40px 14px; max-width: 800px; width: 100%; margin: 0 auto; min-height: 0; }
     .stop-item { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 10px; padding: 14px; margin-bottom: 10px; position: relative; box-shadow: 0 2px 4px rgba(0,0,0,0.02); transition: all 0.3s ease; }
@@ -118,7 +123,11 @@
     .stop-eta { font-size: 0.88rem; color: var(--primary); font-weight: 600; margin-top: 4px; display: flex; justify-content: space-between; }
     .stop-actions { display: flex; gap: 4px; margin-top: 8px; flex-wrap: wrap; align-items: center; }
 
-    /* 모달 스타일 */
+    .app-footer-info { margin-top: 25px; margin-bottom: 15px; text-align: center; font-size: 0.76rem; color: var(--text-muted); border-top: 1px dashed var(--border-color); padding-top: 15px; line-height: 1.6; }
+    .app-footer-info a { color: var(--primary); text-decoration: none; font-weight: 600; }
+    .app-footer-info a:hover { text-decoration: underline; }
+
+    /* Modals */
     .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: none; justify-content: center; align-items: center; z-index: 100; padding: 15px; }
     .modal-overlay.active { display: flex; }
     .modal { background: var(--card-bg); color: var(--text-color); width: 100%; max-width: 400px; border-radius: 12px; padding: 18px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); max-height: 90vh; overflow-y: auto; }
@@ -128,14 +137,14 @@
     .form-group input, .form-group textarea { width: 100%; padding: 8px 10px; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-color); color: var(--text-color); font-size: 0.88rem; }
     .modal-actions { display: flex; justify-content: flex-end; gap: 6px; margin-top: 15px; }
 
-    /* 노선 순서 변경 리스트 아이템 스타일 */
     .route-order-item { display: flex; justify-content: space-between; align-items: center; background: var(--bg-color); border: 1px solid var(--border-color); padding: 8px 12px; border-radius: 6px; margin-bottom: 6px; font-size: 0.9rem; font-weight: 600; }
 
     @media (min-width: 769px) {
       header { flex-direction: row; padding: 12px 20px; }
       .header-bottom { width: auto; gap: 10px; }
       .route-selector { width: 260px; flex: initial; }
-      .logo-area h1 { max-width: none; font-size: 1.1rem; }
+      .header-title-main { font-size: 1.05rem; }
+      .header-title-sub { font-size: 0.88rem; }
       .sidebar { width: 400px; border-left: 1px solid var(--border-color); }
     }
   </style>
@@ -147,7 +156,10 @@
     <div class="header-top">
       <div class="logo-area">
         <span>🚌</span>
-        <h1>실시간 전세버스 도착 정보 (베타)</h1>
+        <div class="header-title-box">
+          <span class="header-title-main">실시간 전세버스 도착 정보(베타)</span>
+          <span class="header-title-sub">경기70사5013</span>
+        </div>
       </div>
       <span id="user-badge" class="badge-passenger">승객 (조회 전용)</span>
     </div>
@@ -169,7 +181,7 @@
 
   <!-- 공지사항 10초 자동 롤링 배너 -->
   <div id="notice-banner" class="notice-banner" style="display: none;">
-    <span>📢 공지:</span>
+    <span class="notice-label">📢 공지:</span>
     <div id="notice-text" class="notice-content">등록된 공지사항이 없습니다.</div>
   </div>
 
@@ -215,6 +227,17 @@
 
     <!-- Sidebar: 기사 모드용 패널 -->
     <div id="driver-sidebar" class="sidebar" style="display: none;">
+      <div class="status-dashboard" style="background: var(--bg-color);">
+        <div class="status-item">
+          <div class="status-label">현재 속도</div>
+          <div id="driver-speed" class="status-value">0 km/h</div>
+        </div>
+        <div class="status-item">
+          <div class="status-label">현재 접속자</div>
+          <div id="driver-online-count" class="status-value" style="color: var(--accent);">1 명</div>
+        </div>
+      </div>
+
       <div class="sidebar-header">
         <h2>📍 기사 운행 및 정류장 관리</h2>
         <div style="display: flex; gap: 4px; flex-wrap: wrap; justify-content: flex-end;">
@@ -241,9 +264,10 @@
       </div>
       
       <div class="sidebar-admin-actions">
-        <button class="btn btn-secondary" style="color:var(--text-color); font-size:0.75rem;" onclick="openAddRouteModal()">➕ 새 노선 추가</button>
-        <button class="btn btn-secondary" style="color:var(--text-color); font-size:0.75rem;" onclick="openEditRouteModal()">✏️ 노선명 수정</button>
-        <button class="btn btn-secondary" style="color:var(--danger); font-size:0.75rem;" onclick="deleteCurrentRoute()">🗑️ 노선 삭제</button>
+        <button class="btn btn-secondary" style="color:var(--text-color); font-size:0.72rem;" onclick="openAddRouteModal()">➕ 새 노선</button>
+        <button class="btn btn-secondary" style="color:var(--text-color); font-size:0.72rem;" onclick="openDuplicateRouteModal()">📋 노선복사</button>
+        <button class="btn btn-secondary" style="color:var(--text-color); font-size:0.72rem;" onclick="openEditRouteModal()">✏️ 이름수정</button>
+        <button class="btn btn-secondary" style="color:var(--danger); font-size:0.72rem;" onclick="deleteCurrentRoute()">🗑️ 삭제</button>
       </div>
 
       <div id="stop-list-driver" class="stop-list" style="padding: 10px;"></div>
@@ -339,6 +363,21 @@
     </div>
   </div>
 
+  <!-- Modal 4-2: 노선 복사 -->
+  <div id="modal-duplicate-route" class="modal-overlay">
+    <div class="modal">
+      <h3>📋 기존 노선 복사하기</h3>
+      <div class="form-group">
+        <label>새로운 복사본 노선 이름</label>
+        <input type="text" id="duplicate-route-name-input" placeholder="예: 출근 1호선 (복사본)" onkeyup="if(event.key==='Enter') duplicateRoute()">
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" style="color:var(--text-color);" onclick="closeModal('modal-duplicate-route')">취소</button>
+        <button class="btn btn-primary" onclick="duplicateRoute()">복사하기</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Modal 5: 공지사항 관리 -->
   <div id="modal-notice" class="modal-overlay">
     <div class="modal">
@@ -427,7 +466,6 @@
         localStorage.setItem(ADMIN_PASSWORD_KEY, '041218');
       }
       
-      // 누락된 노선이 order에 없으면 추가
       Object.keys(routes).forEach(rKey => {
         if (!routeOrder.includes(rKey)) routeOrder.push(rKey);
       });
@@ -456,6 +494,7 @@
       onlineUsersRef.on("value", (snap) => {
         const count = snap.numChildren() || 1;
         document.getElementById("passenger-online-count").innerText = `${count} 명`;
+        document.getElementById("driver-online-count").innerText = `${count} 명`;
       });
     }
 
@@ -472,6 +511,20 @@
             isTripActive = data.isTripActive;
             updateTripStatusUI();
           }
+        }
+      });
+
+      db.ref("passed_stops").on("value", (snapshot) => {
+        const data = snapshot.val();
+        if (data) {
+          passedStopsTime = data;
+        } else {
+          passedStopsTime = {};
+        }
+        localStorage.setItem('passed_stops_time', JSON.stringify(passedStopsTime));
+        renderStopList();
+        if (currentBusLocation) {
+          calculateETA();
         }
       });
 
@@ -725,6 +778,7 @@
 
       const speedKmh = speed > 0 ? Math.round(speed * 3.6) : 0;
       document.getElementById("passenger-speed").innerText = `${speedKmh} km/h`;
+      document.getElementById("driver-speed").innerText = `${speedKmh} km/h`;
       
       const gpsStatusElem = document.getElementById("passenger-gps-status");
       gpsStatusElem.innerText = "수신 양호";
@@ -766,7 +820,6 @@
       
       updateBusPositionUI(latitude, longitude, speed || 0);
 
-      // 위치 전송 주기 30초
       if (now - lastCloudSendTime >= 30000) {
         lastCloudSendTime = now;
         sendBusPositionToCloud(latitude, longitude, speed || 0);
@@ -826,6 +879,7 @@
       const currentStops = routes[currentRouteId]?.stops || [];
       const now = Date.now();
       const ONE_HOUR = 1 * 60 * 60 * 1000;
+      let isUpdated = false;
 
       currentStops.forEach(stop => {
         const stopPos = new google.maps.LatLng(stop.lat, stop.lng);
@@ -836,7 +890,7 @@
         if (distanceMeters < 100) {
           if (!passedStopsTime[stop.id]) {
             passedStopsTime[stop.id] = now;
-            localStorage.setItem('passed_stops_time', JSON.stringify(passedStopsTime));
+            isUpdated = true;
           }
         }
 
@@ -845,12 +899,19 @@
 
         if (passedTime && (now - passedTime >= ONE_HOUR)) {
           delete passedStopsTime[stop.id];
-          localStorage.setItem('passed_stops_time', JSON.stringify(passedStopsTime));
+          isUpdated = true;
         }
 
         applyPassStatusToUI(stop.id, 'p', isPassed, distanceMeters, distanceKm);
         applyPassStatusToUI(stop.id, 'd', isPassed, distanceMeters, distanceKm);
       });
+
+      if (isUpdated) {
+        localStorage.setItem('passed_stops_time', JSON.stringify(passedStopsTime));
+        if (db && isAdmin) {
+          db.ref("passed_stops").set(passedStopsTime);
+        }
+      }
     }
 
     function applyPassStatusToUI(stopId, prefix, isPassed, distanceMeters, distanceKm) {
@@ -890,7 +951,6 @@
       const select = document.getElementById("route-select");
       select.innerHTML = "";
 
-      // 저장된 순서(routeOrder)대로 드롭다운 옵션 구성
       routeOrder.forEach(key => {
         if (!routes[key]) return;
         const opt = document.createElement("option");
@@ -938,33 +998,41 @@
       const currentStops = routes[currentRouteId].stops;
       if(currentStops.length === 0) {
         listContainer.innerHTML = `<p style="text-align:center; color:var(--text-muted); margin-top:20px;">등록된 정류장이 없습니다.</p>`;
-        return;
+      } else {
+        currentStops.forEach((stop, index) => {
+          const div = document.createElement("div");
+          div.className = "stop-item";
+          div.id = `stop-card-${prefix}-${stop.id}`;
+          div.innerHTML = `
+            <div class="stop-header">
+              <span class="stop-name">${index + 1}. ${stop.name}</span>
+              <span class="stop-time">${stop.scheduledTime || '시각 미정'}</span>
+            </div>
+            <div class="stop-eta">
+              <span>도착 예정:</span>
+              <span id="eta-${prefix}-${stop.id}">위치 수신 대기 중...</span>
+            </div>
+            ${prefix === 'd' && isAdmin ? `
+              <div class="stop-actions">
+                <button class="btn btn-secondary" style="color:var(--text-color); font-size:0.75rem;" onclick="moveStop(${index}, -1)" ${index === 0 ? 'disabled style="opacity:0.4;"' : ''}>⬆️ 위로</button>
+                <button class="btn btn-secondary" style="color:var(--text-color); font-size:0.75rem;" onclick="moveStop(${index}, 1)" ${index === currentStops.length - 1 ? 'disabled style="opacity:0.4;"' : ''}>⬇️ 아래로</button>
+                <button class="btn btn-secondary" style="color:var(--text-color); font-size:0.75rem;" onclick="openEditStopModal(${stop.id})">✏️ 수정</button>
+                <button class="btn btn-secondary" style="color:var(--danger); font-size:0.75rem;" onclick="deleteStop(${stop.id})">🗑️ 삭제</button>
+              </div>
+            ` : ''}
+          `;
+          listContainer.appendChild(div);
+        });
       }
 
-      currentStops.forEach((stop, index) => {
-        const div = document.createElement("div");
-        div.className = "stop-item";
-        div.id = `stop-card-${prefix}-${stop.id}`;
-        div.innerHTML = `
-          <div class="stop-header">
-            <span class="stop-name">${index + 1}. ${stop.name}</span>
-            <span class="stop-time">${stop.scheduledTime || '시각 미정'}</span>
-          </div>
-          <div class="stop-eta">
-            <span>도착 예정:</span>
-            <span id="eta-${prefix}-${stop.id}">위치 수신 대기 중...</span>
-          </div>
-          ${prefix === 'd' && isAdmin ? `
-            <div class="stop-actions">
-              <button class="btn btn-secondary" style="color:var(--text-color); font-size:0.75rem;" onclick="moveStop(${index}, -1)" ${index === 0 ? 'disabled style="opacity:0.4;"' : ''}>⬆️ 위로</button>
-              <button class="btn btn-secondary" style="color:var(--text-color); font-size:0.75rem;" onclick="moveStop(${index}, 1)" ${index === currentStops.length - 1 ? 'disabled style="opacity:0.4;"' : ''}>⬇️ 아래로</button>
-              <button class="btn btn-secondary" style="color:var(--text-color); font-size:0.75rem;" onclick="openEditStopModal(${stop.id})">✏️ 수정</button>
-              <button class="btn btn-secondary" style="color:var(--danger); font-size:0.75rem;" onclick="deleteStop(${stop.id})">🗑️ 삭제</button>
-            </div>
-          ` : ''}
-        `;
-        listContainer.appendChild(div);
-      });
+      const footerDiv = document.createElement("div");
+      footerDiv.className = "app-footer-info";
+      footerDiv.innerHTML = `
+        제작자 : 박진배 | 도움 : Google Gemini<br>
+        문의 : 인스타그램 <a href="https://instagram.com/parkjinbae_s" target="_blank" rel="noopener noreferrer">@parkjinbae_s</a><br>
+        이 사이트는 AI를 이용하여 제작하였습니다.
+      `;
+      listContainer.appendChild(footerDiv);
     }
 
     function openAddRouteModal() {
@@ -973,6 +1041,51 @@
       document.getElementById("modal-route-title").innerText = "➕ 새 노선 추가";
       document.getElementById("route-name-input").value = "";
       document.getElementById("modal-route").classList.add("active");
+    }
+
+    function openDuplicateRouteModal() {
+      if(!isAdmin) return;
+      const currentName = routes[currentRouteId]?.name || "노선";
+      document.getElementById("duplicate-route-name-input").value = currentName + " (복사본)";
+      document.getElementById("modal-duplicate-route").classList.add("active");
+    }
+
+    function duplicateRoute() {
+      if(!isAdmin) return;
+      const newName = document.getElementById("duplicate-route-name-input").value.trim();
+      if(!newName) {
+        alert("복사할 노선 이름을 입력해주세요.");
+        return;
+      }
+
+      const currentStops = routes[currentRouteId]?.stops || [];
+      const copiedStops = currentStops.map((stop, idx) => ({
+        ...stop,
+        id: Date.now() + idx
+      }));
+
+      const newId = "route-" + Date.now();
+      routes[newId] = {
+        id: newId,
+        name: newName,
+        stops: copiedStops
+      };
+
+      routeOrder.push(newId);
+      currentRouteId = newId;
+      activeDriverRouteId = newId;
+
+      localStorage.setItem('bus_route_order', JSON.stringify(routeOrder));
+      if (db) {
+        db.ref("bus_state").update({ activeDriverRouteId: newId, routeOrder: routeOrder });
+      }
+
+      syncRoutesToCloud();
+      closeModal("modal-duplicate-route");
+      renderRouteSelect();
+      updateMapRoute();
+      renderStopList();
+      alert(`"${newName}" 노선이 성공적으로 복사되었습니다!`);
     }
 
     function openEditRouteModal() {
