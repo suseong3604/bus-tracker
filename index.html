@@ -56,10 +56,8 @@
 
     .header-bottom { display: flex; justify-content: space-between; align-items: center; width: 100%; gap: 6px; }
     
-    .route-selector { flex: 1; min-width: 0; display: none; }
+    .route-selector { flex: 1; min-width: 0; display: block; }
     .route-selector select { width: 100%; background: var(--card-bg); color: var(--text-color); border: 1px solid var(--border-color); padding: 5px 8px; border-radius: 6px; font-size: 0.85rem; font-weight: 600; cursor: pointer; text-overflow: ellipsis; }
-
-    .passenger-route-title { font-size: 0.9rem; font-weight: 700; color: var(--accent); display: flex; align-items: center; gap: 5px; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
     .header-actions { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
 
@@ -133,7 +131,7 @@
     @media (min-width: 769px) {
       header { flex-direction: row; padding: 12px 20px; }
       .header-bottom { width: auto; gap: 10px; }
-      .route-selector, .passenger-route-title { width: 220px; flex: initial; }
+      .route-selector { width: 260px; flex: initial; }
       .logo-area h1 { max-width: none; font-size: 1.1rem; }
       .main-container { height: calc(100vh - 60px); }
       .sidebar { width: 400px; border-left: 1px solid var(--border-color); }
@@ -153,11 +151,7 @@
     </div>
 
     <div class="header-bottom">
-      <div id="passenger-route-title" class="passenger-route-title">
-        <span>🎯 노선: 로딩 중...</span>
-      </div>
-
-      <div id="driver-route-selector" class="route-selector">
+      <div class="route-selector">
         <select id="route-select" onchange="switchRoute(this.value)"></select>
       </div>
 
@@ -371,7 +365,8 @@
     };
 
     let routes = JSON.parse(localStorage.getItem('bus_routes')) || defaultRoutes;
-    let currentRouteId = localStorage.getItem('current_route_id') || Object.keys(routes)[0] || "route-1";
+    let currentRouteId = Object.keys(routes)[0] || "route-1";
+    let activeDriverRouteId = "route-1"; // 기사님이 현재 운행 지정해둔 노선 ID
 
     let map, busMarker, polyline, geocoder;
     let stopMarkers = [];
@@ -429,17 +424,12 @@
         }
       });
 
-      // 노선 정보 및 현재 선택된 노선 동기화 리스너 추가
+      // 기사가 지정해둔 현재 운행 노선 실시간 수신
       db.ref("bus_state").on("value", (snapshot) => {
         const data = snapshot.val();
-        if (data && data.currentRouteId) {
-          if (currentRouteId !== data.currentRouteId) {
-            currentRouteId = data.currentRouteId;
-            localStorage.setItem('current_route_id', currentRouteId);
-            renderRouteSelect();
-            updateMapRoute();
-            renderStopList();
-          }
+        if (data && data.activeDriverRouteId) {
+          activeDriverRouteId = data.activeDriverRouteId;
+          renderRouteSelect();
         }
       });
 
@@ -746,27 +736,30 @@
     function renderRouteSelect() {
       const select = document.getElementById("route-select");
       select.innerHTML = "";
+
       Object.keys(routes).forEach(key => {
         const opt = document.createElement("option");
         opt.value = key;
-        opt.innerText = routes[key].name;
+        
+        // 현재 기사가 지정한 운행 노선일 경우 초록색 '🟢 [운행 중]' 태그 표시
+        if (key === activeDriverRouteId) {
+          opt.innerText = `🟢 [운행 중] ${routes[key].name}`;
+        } else {
+          opt.innerText = routes[key].name;
+        }
+
         if(key === currentRouteId) opt.selected = true;
         select.appendChild(opt);
       });
-
-      const passengerTitle = document.getElementById("passenger-route-title");
-      if (routes[currentRouteId]) {
-        passengerTitle.innerHTML = `<span>🎯 노선: ${routes[currentRouteId].name}</span>`;
-      }
     }
 
     function switchRoute(routeId) {
       currentRouteId = routeId;
-      localStorage.setItem('current_route_id', currentRouteId);
-      
-      // 기사님이 노선을 변경하면 Firebase에 즉시 저장하여 승객 화면과 동기화
-      if (db && isAdmin) {
-        db.ref("bus_state").update({ currentRouteId: currentRouteId });
+
+      // 기사 모드인 경우, 자신이 바꾼 노선을 현재 '운행 지정 노선'으로 클라우드에 업데이트
+      if (isAdmin && db) {
+        activeDriverRouteId = routeId;
+        db.ref("bus_state").update({ activeDriverRouteId: routeId });
       }
 
       renderRouteSelect();
@@ -855,9 +848,9 @@
           stops: []
         };
         currentRouteId = newId;
-        localStorage.setItem('current_route_id', currentRouteId);
+        activeDriverRouteId = newId;
         if (db) {
-          db.ref("bus_state").update({ currentRouteId: currentRouteId });
+          db.ref("bus_state").update({ activeDriverRouteId: newId });
         }
       }
 
@@ -879,9 +872,9 @@
 
       delete routes[currentRouteId];
       currentRouteId = Object.keys(routes)[0];
-      localStorage.setItem('current_route_id', currentRouteId);
+      activeDriverRouteId = currentRouteId;
       if (db) {
-        db.ref("bus_state").update({ currentRouteId: currentRouteId });
+        db.ref("bus_state").update({ activeDriverRouteId: currentRouteId });
       }
 
       syncRoutesToCloud();
@@ -922,9 +915,6 @@
         document.getElementById("btn-login-modal").style.display = "none";
         document.getElementById("btn-change-pw-modal").style.display = "inline-flex";
         document.getElementById("btn-logout").style.display = "inline-flex";
-        
-        document.getElementById("passenger-route-title").style.display = "none";
-        document.getElementById("driver-route-selector").style.display = "block";
 
         document.getElementById("passenger-panel").style.display = "none";
         isMapVisible = false;
@@ -945,9 +935,6 @@
       document.getElementById("btn-login-modal").style.display = "inline-flex";
       document.getElementById("btn-change-pw-modal").style.display = "none";
       document.getElementById("btn-logout").style.display = "none";
-      
-      document.getElementById("passenger-route-title").style.display = "flex";
-      document.getElementById("driver-route-selector").style.display = "none";
 
       document.getElementById("passenger-panel").style.display = "flex";
       document.getElementById("map-container").style.display = "none";
