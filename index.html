@@ -371,7 +371,7 @@
     };
 
     let routes = JSON.parse(localStorage.getItem('bus_routes')) || defaultRoutes;
-    let currentRouteId = Object.keys(routes)[0] || "route-1";
+    let currentRouteId = localStorage.getItem('current_route_id') || Object.keys(routes)[0] || "route-1";
 
     let map, busMarker, polyline, geocoder;
     let stopMarkers = [];
@@ -425,6 +425,20 @@
           if (typeof data.isTripActive !== 'undefined') {
             isTripActive = data.isTripActive;
             updateTripStatusUI();
+          }
+        }
+      });
+
+      // 노선 정보 및 현재 선택된 노선 동기화 리스너 추가
+      db.ref("bus_state").on("value", (snapshot) => {
+        const data = snapshot.val();
+        if (data && data.currentRouteId) {
+          if (currentRouteId !== data.currentRouteId) {
+            currentRouteId = data.currentRouteId;
+            localStorage.setItem('current_route_id', currentRouteId);
+            renderRouteSelect();
+            updateMapRoute();
+            renderStopList();
           }
         }
       });
@@ -668,7 +682,7 @@
       if(!currentBusLocation) return;
       const currentStops = routes[currentRouteId]?.stops || [];
       const now = Date.now();
-      const ONE_HOUR = 1 * 60 * 60 * 1000; // 1시간 (밀리초 단위)
+      const ONE_HOUR = 1 * 60 * 60 * 1000;
 
       currentStops.forEach(stop => {
         const stopPos = new google.maps.LatLng(stop.lat, stop.lng);
@@ -686,7 +700,6 @@
         const passedTime = passedStopsTime[stop.id];
         const isPassed = passedTime && (now - passedTime < ONE_HOUR);
 
-        // 1시간이 지나면 기록을 지우고 원래 상태로 복원
         if (passedTime && (now - passedTime >= ONE_HOUR)) {
           delete passedStopsTime[stop.id];
           localStorage.setItem('passed_stops_time', JSON.stringify(passedStopsTime));
@@ -749,6 +762,13 @@
 
     function switchRoute(routeId) {
       currentRouteId = routeId;
+      localStorage.setItem('current_route_id', currentRouteId);
+      
+      // 기사님이 노선을 변경하면 Firebase에 즉시 저장하여 승객 화면과 동기화
+      if (db && isAdmin) {
+        db.ref("bus_state").update({ currentRouteId: currentRouteId });
+      }
+
       renderRouteSelect();
       updateMapRoute();
       renderStopList();
@@ -835,6 +855,10 @@
           stops: []
         };
         currentRouteId = newId;
+        localStorage.setItem('current_route_id', currentRouteId);
+        if (db) {
+          db.ref("bus_state").update({ currentRouteId: currentRouteId });
+        }
       }
 
       syncRoutesToCloud();
@@ -855,6 +879,11 @@
 
       delete routes[currentRouteId];
       currentRouteId = Object.keys(routes)[0];
+      localStorage.setItem('current_route_id', currentRouteId);
+      if (db) {
+        db.ref("bus_state").update({ currentRouteId: currentRouteId });
+      }
+
       syncRoutesToCloud();
       renderRouteSelect();
       updateMapRoute();
