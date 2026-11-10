@@ -52,10 +52,13 @@
     .logo-area { display: flex; align-items: center; gap: 6px; overflow: hidden; flex: 1; min-width: 0; }
     .logo-area span:first-child { font-size: 1.2rem; flex-shrink: 0; }
     
-    /* 타이틀 및 차량번호 모바일 최적화 스타일 */
     .header-title-box { display: flex; align-items: baseline; gap: 5px; flex-wrap: wrap; overflow: hidden; }
-    .header-title-main { font-size: 0.92rem; font-weight: 700; white-space: nowrap; }
-    .header-title-sub { font-size: 0.78rem; font-weight: 500; opacity: 0.88; color: #93c5fd; white-space: nowrap; }
+    .header-title-main { font-size: 0.90rem; font-weight: 700; white-space: nowrap; }
+    .header-title-sub { font-size: 0.76rem; font-weight: 500; opacity: 0.88; color: #93c5fd; white-space: nowrap; }
+
+    /* 사용방법 느낌표 버튼 (차량번호 옆) */
+    .btn-guide-icon { background: rgba(255,255,255,0.15); color: #fde047; border: 1px solid rgba(253,224,71,0.4); width: 20px; height: 20px; border-radius: 50%; font-size: 0.72rem; font-weight: bold; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s; flex-shrink: 0; margin-left: 2px; }
+    .btn-guide-icon:hover { background: rgba(253,224,71,0.3); }
 
     .badge-driver { background: #e11d48; color: white; padding: 2px 6px; border-radius: 10px; font-size: 0.7rem; font-weight: bold; white-space: nowrap; margin-left: 4px; }
     .badge-passenger { background: #059669; color: white; padding: 2px 6px; border-radius: 10px; font-size: 0.7rem; font-weight: bold; white-space: nowrap; margin-left: 4px; }
@@ -143,8 +146,8 @@
       header { flex-direction: row; padding: 12px 20px; }
       .header-bottom { width: auto; gap: 10px; }
       .route-selector { width: 260px; flex: initial; }
-      .header-title-main { font-size: 1.05rem; }
-      .header-title-sub { font-size: 0.88rem; }
+      .header-title-main { font-size: 1.02rem; }
+      .header-title-sub { font-size: 0.85rem; }
       .sidebar { width: 400px; border-left: 1px solid var(--border-color); }
     }
   </style>
@@ -159,6 +162,7 @@
         <div class="header-title-box">
           <span class="header-title-main">실시간 전세버스 도착 정보(베타)</span>
           <span class="header-title-sub">경기70사5013</span>
+          <button class="btn-guide-icon" onclick="openGuideModal()" title="사용방법">i</button>
         </div>
       </div>
       <span id="user-badge" class="badge-passenger">승객 (조회 전용)</span>
@@ -406,6 +410,30 @@
     </div>
   </div>
 
+  <!-- Modal 7: 사용방법(가이드) 관리 및 조회 -->
+  <div id="modal-guide" class="modal-overlay">
+    <div class="modal">
+      <h3>📖 실시간 버스 이용 가이드</h3>
+      <div id="guide-view-area">
+        <div id="guide-content-display" style="font-size: 0.88rem; line-height: 1.6; white-space: pre-wrap; margin-bottom: 15px; color: var(--text-color);">등록된 사용방법이 없습니다.</div>
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <button id="btn-switch-guide-edit" class="btn btn-secondary" style="color:var(--text-color); font-size:0.75rem; display:none;" onclick="toggleGuideEditMode(true)">✏️ 가이드 수정하기</button>
+          <button class="btn btn-primary" onclick="closeModal('modal-guide')">확인</button>
+        </div>
+      </div>
+      <div id="guide-edit-area" style="display: none;">
+        <div class="form-group">
+          <label>사용방법 내용 작성 (기사님 전용)</label>
+          <textarea id="guide-textarea" rows="8" placeholder="예:&#10;1. 본 페이지에서 실시간 위치를 확인할 수 있습니다.&#10;2. 버스 도착 3분 전 미리 대기해 주세요."></textarea>
+        </div>
+        <div class="modal-actions">
+          <button class="btn btn-secondary" style="color:var(--text-color);" onclick="toggleGuideEditMode(false)">취소</button>
+          <button class="btn btn-primary" onclick="saveGuideContent()">저장하기</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Script Core -->
   <script>
     const firebaseConfig = {
@@ -451,6 +479,8 @@
     let notices = [];
     let noticeIndex = 0;
     let noticeTimer = null;
+
+    let appGuideText = "1. 실시간 버스 위치와 도착 예정 시간을 확인할 수 있습니다.\n2. 버스가 출발하면 정류장 순서대로 '통과 완료' 표시가 자동으로 업데이트됩니다.\n3. 버스 도착 3분 전 미리 정류장에서 대기해 주세요.";
 
     let map, busMarker, polyline, geocoder;
     let stopMarkers = [];
@@ -544,6 +574,9 @@
             localStorage.setItem('bus_route_order', JSON.stringify(routeOrder));
             renderRouteSelect();
           }
+          if (data.guideText) {
+            appGuideText = data.guideText;
+          }
         }
       });
 
@@ -609,6 +642,51 @@
       closeModal("modal-notice");
       updateNoticeBannerUI();
       alert("공지사항이 성공적으로 저장되었습니다!");
+    }
+
+    function openGuideModal() {
+      document.getElementById("guide-content-display").innerText = appGuideText;
+      document.getElementById("guide-view-area").style.display = "block";
+      document.getElementById("guide-edit-area").style.display = "none";
+
+      const editBtn = document.getElementById("btn-switch-guide-edit");
+      if (isAdmin) {
+        editBtn.style.display = "inline-flex";
+      } else {
+        editBtn.style.display = "none";
+      }
+
+      document.getElementById("modal-guide").classList.add("active");
+    }
+
+    function toggleGuideEditMode(isEditing) {
+      if (!isAdmin) return;
+      if (isEditing) {
+        document.getElementById("guide-textarea").value = appGuideText;
+        document.getElementById("guide-view-area").style.display = "none";
+        document.getElementById("guide-edit-area").style.display = "block";
+      } else {
+        document.getElementById("guide-view-area").style.display = "block";
+        document.getElementById("guide-edit-area").style.display = "none";
+      }
+    }
+
+    function saveGuideContent() {
+      if (!isAdmin) return;
+      const newText = document.getElementById("guide-textarea").value.trim();
+      if (!newText) {
+        alert("사용방법 내용을 입력해주세요.");
+        return;
+      }
+
+      appGuideText = newText;
+      if (db) {
+        db.ref("bus_state").update({ guideText: appGuideText });
+      }
+
+      toggleGuideEditMode(false);
+      openGuideModal();
+      alert("사용방법이 성공적으로 저장되었습니다!");
     }
 
     function openRouteOrderModal() {
@@ -969,6 +1047,13 @@
 
     function switchRoute(routeId) {
       currentRouteId = routeId;
+
+      // 노선 변경 시 기존 통과 정류장 흑백 표시 초기화 (새 노선에 맞게 리셋)
+      passedStopsTime = {};
+      localStorage.setItem('passed_stops_time', JSON.stringify(passedStopsTime));
+      if (db && isAdmin) {
+        db.ref("passed_stops").set(null);
+      }
 
       if (isAdmin && db) {
         activeDriverRouteId = routeId;
