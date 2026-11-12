@@ -518,6 +518,19 @@
       return `${hours}:${minutes}`;
     }
 
+    // 소요 시간 포맷팅 (60분 이상 시 "X시간 Y분"으로 변환)
+    function formatEstimatedTime(minutes) {
+      if (minutes < 60) {
+        return `약 ${minutes}분 소요`;
+      }
+      const hrs = Math.floor(minutes / 60);
+      const mins = minutes % 60;
+      if (mins === 0) {
+        return `약 ${hrs}시간 소요`;
+      }
+      return `약 ${hrs}시간 ${mins}분 소요`;
+    }
+
     function initPresenceTracker() {
       if (!db) return;
 
@@ -927,7 +940,6 @@
       }
     }
 
-    // 통합 버튼: GPS 위치 추적 시작/중지 + 운행 상태 시작/종료 동시 처리
     function toggleOperation() {
       if (!isAdmin) return;
 
@@ -1011,7 +1023,30 @@
       }
     }
 
-    // 순차적(내 위치 -> 다음 정류장 -> 그 다음 정류장) 누적 거리 및 소요시간 계산 로직
+    // 기사님 수동 통과 완료 / 취소 처리 함수
+    function toggleStopPassStatus(stopId) {
+      if (!isAdmin) return;
+      const now = Date.now();
+      const ONE_HOUR = 1 * 60 * 60 * 1000;
+
+      if (passedStopsTime[stopId] && (now - passedStopsTime[stopId] < ONE_HOUR)) {
+        // 이미 통과 상태이면 취소
+        delete passedStopsTime[stopId];
+      } else {
+        // 아니면 통과 처리
+        passedStopsTime[stopId] = now;
+      }
+
+      localStorage.setItem('passed_stops_time', JSON.stringify(passedStopsTime));
+      if (db) {
+        db.ref("passed_stops").set(passedStopsTime);
+      }
+      renderStopList();
+      if (currentBusLocation) {
+        calculateSequentialETA();
+      }
+    }
+
     function calculateSequentialETA() {
       if(!currentBusLocation) return;
       const currentStops = routes[currentRouteId]?.stops || [];
@@ -1027,6 +1062,7 @@
         const stopPos = new google.maps.LatLng(stop.lat, stop.lng);
         const directDistToStop = google.maps.geometry.spherical.computeDistanceBetween(busLatLng, stopPos);
 
+        // 자동 100m 이내 진입 시 통과 처리
         if (directDistToStop < 100) {
           if (!passedStopsTime[stop.id]) {
             passedStopsTime[stop.id] = now;
@@ -1088,7 +1124,8 @@
             estimatedMinutes = Math.ceil((routeMeters / 1000) / 30 * 60);
           }
           estimatedMinutes = Math.max(1, estimatedMinutes);
-          etaElem.innerText = `약 ${estimatedMinutes}분 소요 (${distanceKm} km)`;
+          const timeText = formatEstimatedTime(estimatedMinutes);
+          etaElem.innerText = `${timeText} (${distanceKm} km)`;
         }
       }
     }
@@ -1176,6 +1213,7 @@
             </div>
             ${prefix === 'd' && isAdmin ? `
               <div class="stop-actions">
+                <button class="btn ${isPassed ? 'btn-secondary' : 'btn-accent'}" style="color:${isPassed ? 'var(--text-color)' : 'white'}; font-size:0.75rem;" onclick="toggleStopPassStatus(${stop.id})">${isPassed ? '↩️ 통과 취소' : '✅ 수동 통과'}</button>
                 <button class="btn btn-secondary" style="color:var(--text-color); font-size:0.75rem;" onclick="moveStop(${index}, -1)" ${index === 0 ? 'disabled style="opacity:0.4;"' : ''}>⬆️ 위로</button>
                 <button class="btn btn-secondary" style="color:var(--text-color); font-size:0.75rem;" onclick="moveStop(${index}, 1)" ${index === currentStops.length - 1 ? 'disabled style="opacity:0.4;"' : ''}>⬇️ 아래로</button>
                 <button class="btn btn-secondary" style="color:var(--text-color); font-size:0.75rem;" onclick="openEditStopModal(${stop.id})">✏️ 수정</button>
