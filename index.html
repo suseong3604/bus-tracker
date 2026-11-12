@@ -77,13 +77,16 @@
     .notice-content { flex: 1; white-space: pre-wrap; word-wrap: break-word; }
 
     /* Buttons */
-    .btn { padding: 5px 10px; border-radius: 6px; border: none; font-size: 0.78rem; font-weight: 600; cursor: pointer; transition: all 0.2s; display: inline-flex; align-items: center; gap: 3px; white-space: nowrap; }
+    .btn { padding: 5px 10px; border-radius: 6px; border: none; font-size: 0.78rem; font-weight: 600; cursor: pointer; transition: all 0.2s; display: inline-flex; align-items: center; justify-content: center; gap: 4px; white-space: nowrap; }
     .btn-primary { background-color: var(--primary); color: white; }
     .btn-primary:hover { background-color: var(--primary-hover); }
+    .btn-accent { background-color: var(--accent); color: white; }
+    .btn-accent:hover { opacity: 0.9; }
     .btn-secondary { background-color: transparent; color: var(--header-text); border: 1px solid rgba(255,255,255,0.3); }
     .btn-secondary:hover { background-color: rgba(255,255,255,0.1); }
     .btn-theme { background: transparent; color: var(--header-text); font-size: 1.1rem; border: none; cursor: pointer; padding: 2px 4px; }
     .btn-danger { background-color: var(--danger); color: white; }
+    .btn-danger:hover { opacity: 0.9; }
 
     /* Main Content Area */
     .main-container { display: flex; flex: 1; position: relative; overflow: hidden; height: 100%; min-height: 0; }
@@ -255,15 +258,14 @@
         <div class="driver-control-row">
           <div class="gps-status-box">
             <div id="gps-dot" class="dot"></div>
-            <span id="gps-text">GPS 정지됨</span>
+            <span id="gps-text">운행 종료 · GPS 정지됨</span>
           </div>
           <div style="display: flex; gap: 5px;">
             <button id="btn-toggle-map" class="btn btn-secondary" style="color: var(--text-color); background: var(--card-bg); border: 1px solid var(--border-color);" onclick="toggleMapVisibility()">🗺️ 지도 켜기</button>
           </div>
         </div>
         <div class="driver-control-row">
-          <button id="btn-toggle-gps" class="btn btn-primary" style="flex:1;" onclick="toggleGPS()">📡 위치 추적 시작</button>
-          <button id="btn-toggle-trip" class="btn btn-danger" style="flex:1;" onclick="toggleTripStatus()">🔴 운행 종료 중</button>
+          <button id="btn-toggle-operation" class="btn btn-accent" style="flex:1; padding: 9px 12px; font-size: 0.88rem;" onclick="toggleOperation()">🟢 운행 시작 (GPS 켜기)</button>
         </div>
       </div>
       
@@ -458,6 +460,7 @@
     let isDarkTheme = false;
     let isTripActive = false;
     let isMapVisible = false;
+    let isEditingRouteName = false;
 
     let defaultRoutes = {
       "route-1": {
@@ -507,6 +510,14 @@
       initPresenceTracker();
     };
 
+    function formatPassedTime(timestamp) {
+      if (!timestamp) return "";
+      const date = new Date(timestamp);
+      const hours = String(date.getHours()).padStart(2, '0');
+      const minutes = String(date.getMinutes()).padStart(2, '0');
+      return `${hours}:${minutes}`;
+    }
+
     function initPresenceTracker() {
       if (!db) return;
 
@@ -539,7 +550,7 @@
           }
           if (typeof data.isTripActive !== 'undefined') {
             isTripActive = data.isTripActive;
-            updateTripStatusUI();
+            updateOperationStatusUI();
           }
         }
       });
@@ -554,7 +565,7 @@
         localStorage.setItem('passed_stops_time', JSON.stringify(passedStopsTime));
         renderStopList();
         if (currentBusLocation) {
-          calculateETA();
+          calculateSequentialETA();
         }
       });
 
@@ -889,7 +900,7 @@
           busMarker.setPosition(busPos);
         }
       }
-      calculateETA();
+      calculateSequentialETA();
     }
 
     function handleGPSPosition(pos) {
@@ -916,56 +927,107 @@
       }
     }
 
-    function toggleTripStatus() {
-      if(!isAdmin) return;
-      isTripActive = !isTripActive;
-      updateTripStatusUI();
-      
-      if (db && currentBusLocation) {
-        db.ref("bus_location").update({
-          isTripActive: isTripActive,
-          timestamp: Date.now()
-        });
-      } else if (db) {
-        db.ref("bus_location").update({ isTripActive: isTripActive });
+    // 통합 버튼: GPS 위치 추적 시작/중지 + 운행 상태 시작/종료 동시 처리
+    function toggleOperation() {
+      if (!isAdmin) return;
+
+      const isStarting = !watchId && !isTripActive;
+
+      if (isStarting) {
+        if (!navigator.geolocation) {
+          alert("이 브라우저는 위치 서비스를 지원하지 않습니다.");
+          return;
+        }
+
+        watchId = navigator.geolocation.watchPosition(
+          handleGPSPosition,
+          (err) => {
+            alert("위치 정보를 가져올 수 없습니다: " + err.message);
+            stopOperation();
+          },
+          { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 }
+        );
+
+        isTripActive = true;
+        updateOperationStatusUI();
+
+        if (db) {
+          db.ref("bus_location").update({
+            isTripActive: true,
+            timestamp: Date.now()
+          });
+        }
+      } else {
+        stopOperation();
       }
     }
 
-    function updateTripStatusUI() {
-      const statusText = document.getElementById("passenger-trip-status");
-      const tripBtn = document.getElementById("btn-toggle-trip");
+    function stopOperation() {
+      if (watchId) {
+        navigator.geolocation.clearWatch(watchId);
+        watchId = null;
+      }
+      isTripActive = false;
+      updateOperationStatusUI();
 
-      if (isTripActive) {
+      if (db) {
+        db.ref("bus_location").update({
+          isTripActive: false,
+          timestamp: Date.now()
+        });
+      }
+    }
+
+    function updateOperationStatusUI() {
+      const statusText = document.getElementById("passenger-trip-status");
+      const opBtn = document.getElementById("btn-toggle-operation");
+      const dot = document.getElementById("gps-dot");
+      const text = document.getElementById("gps-text");
+
+      const active = isTripActive || Boolean(watchId);
+
+      if (active) {
         statusText.innerText = "🟢 운행 중";
         statusText.style.color = "var(--accent)";
-        if(tripBtn) {
-          tripBtn.innerText = "🟢 운행 중 (종료하기)";
-          tripBtn.classList.replace("btn-danger", "btn-primary");
+
+        if (opBtn) {
+          opBtn.innerText = "🔴 운행 종료 (GPS 끄기)";
+          opBtn.classList.remove("btn-accent");
+          opBtn.classList.add("btn-danger");
         }
+        if (dot) dot.classList.add("active");
+        if (text) text.innerText = watchId ? "운행 중 · GPS 추적 중" : "운행 중";
       } else {
         statusText.innerText = "🔴 운행 종료";
         statusText.style.color = "var(--danger)";
-        if(tripBtn) {
-          tripBtn.innerText = "🔴 운행 종료 (시작하기)";
-          tripBtn.classList.replace("btn-primary", "btn-danger");
+
+        if (opBtn) {
+          opBtn.innerText = "🟢 운행 시작 (GPS 켜기)";
+          opBtn.classList.remove("btn-danger");
+          opBtn.classList.add("btn-accent");
         }
+        if (dot) dot.classList.remove("active");
+        if (text) text.innerText = "운행 종료 · GPS 정지됨";
       }
     }
 
-    function calculateETA() {
+    // 순차적(내 위치 -> 다음 정류장 -> 그 다음 정류장) 누적 거리 및 소요시간 계산 로직
+    function calculateSequentialETA() {
       if(!currentBusLocation) return;
       const currentStops = routes[currentRouteId]?.stops || [];
       const now = Date.now();
       const ONE_HOUR = 1 * 60 * 60 * 1000;
       let isUpdated = false;
 
-      currentStops.forEach(stop => {
-        const stopPos = new google.maps.LatLng(stop.lat, stop.lng);
-        const busPos = new google.maps.LatLng(currentBusLocation.lat, currentBusLocation.lng);
-        const distanceMeters = google.maps.geometry.spherical.computeDistanceBetween(busPos, stopPos);
-        const distanceKm = (distanceMeters / 1000).toFixed(1);
+      let accumulatedMeters = 0;
+      let isFirstUnpassed = true;
+      const busLatLng = new google.maps.LatLng(currentBusLocation.lat, currentBusLocation.lng);
 
-        if (distanceMeters < 100) {
+      currentStops.forEach((stop, index) => {
+        const stopPos = new google.maps.LatLng(stop.lat, stop.lng);
+        const directDistToStop = google.maps.geometry.spherical.computeDistanceBetween(busLatLng, stopPos);
+
+        if (directDistToStop < 100) {
           if (!passedStopsTime[stop.id]) {
             passedStopsTime[stop.id] = now;
             isUpdated = true;
@@ -980,8 +1042,18 @@
           isUpdated = true;
         }
 
-        applyPassStatusToUI(stop.id, 'p', isPassed, distanceMeters, distanceKm);
-        applyPassStatusToUI(stop.id, 'd', isPassed, distanceMeters, distanceKm);
+        if (!isPassed) {
+          if (isFirstUnpassed) {
+            accumulatedMeters = directDistToStop;
+            isFirstUnpassed = false;
+          } else {
+            const prevStopPos = new google.maps.LatLng(currentStops[index - 1].lat, currentStops[index - 1].lng);
+            accumulatedMeters += google.maps.geometry.spherical.computeDistanceBetween(prevStopPos, stopPos);
+          }
+        }
+
+        applySequentialPassStatusToUI(stop.id, 'p', isPassed, passedTime, directDistToStop, isPassed ? 0 : accumulatedMeters);
+        applySequentialPassStatusToUI(stop.id, 'd', isPassed, passedTime, directDistToStop, isPassed ? 0 : accumulatedMeters);
       });
 
       if (isUpdated) {
@@ -992,36 +1064,32 @@
       }
     }
 
-    function applyPassStatusToUI(stopId, prefix, isPassed, distanceMeters, distanceKm) {
+    function applySequentialPassStatusToUI(stopId, prefix, isPassed, passedTime, directDist, routeMeters) {
       const cardElem = document.getElementById(`stop-card-${prefix}-${stopId}`);
       const etaElem = document.getElementById(`eta-${prefix}-${stopId}`);
       if (!cardElem || !etaElem) return;
 
       if (isPassed) {
         cardElem.classList.add("passed");
-        etaElem.innerHTML = `<span style="color:var(--text-muted);">✅ 통과 완료</span>`;
+        const timeStr = formatPassedTime(passedTime);
+        etaElem.innerHTML = `<span style="color:var(--text-muted);">✅ 통과 완료${timeStr ? ` (${timeStr})` : ''}</span>`;
       } else {
         cardElem.classList.remove("passed");
-        updateEtaText(`eta-${prefix}-${stopId}`, distanceMeters, distanceKm);
-      }
-    }
+        const distanceKm = (routeMeters / 1000).toFixed(1);
 
-    function updateEtaText(elementId, distanceMeters, distanceKm) {
-      const etaElem = document.getElementById(elementId);
-      if(!etaElem) return;
-
-      if(distanceMeters < 100) {
-        etaElem.innerHTML = `<span style="color:var(--accent);">🎉 잠시 후 도착!</span>`;
-      } else {
-        let estimatedMinutes = 0;
-        if (currentBusSpeed && currentBusSpeed > 1.39) { 
-          const speedKmh = currentBusSpeed * 3.6;
-          estimatedMinutes = Math.ceil((distanceMeters / 1000) / speedKmh * 60);
+        if(directDist < 100) {
+          etaElem.innerHTML = `<span style="color:var(--accent);">🎉 잠시 후 도착!</span>`;
         } else {
-          estimatedMinutes = Math.ceil((distanceMeters / 1000) / 30 * 60);
+          let estimatedMinutes = 0;
+          if (currentBusSpeed && currentBusSpeed > 1.39) { 
+            const speedKmh = currentBusSpeed * 3.6;
+            estimatedMinutes = Math.ceil((routeMeters / 1000) / speedKmh * 60);
+          } else {
+            estimatedMinutes = Math.ceil((routeMeters / 1000) / 30 * 60);
+          }
+          estimatedMinutes = Math.max(1, estimatedMinutes);
+          etaElem.innerText = `약 ${estimatedMinutes}분 소요 (${distanceKm} km)`;
         }
-        estimatedMinutes = Math.max(1, estimatedMinutes);
-        etaElem.innerText = `약 ${estimatedMinutes}분 소요 (${distanceKm} km)`;
       }
     }
 
@@ -1048,7 +1116,6 @@
     function switchRoute(routeId) {
       currentRouteId = routeId;
 
-      // 노선 변경 시 기존 통과 정류장 흑백 표시 초기화 (새 노선에 맞게 리셋)
       passedStopsTime = {};
       localStorage.setItem('passed_stops_time', JSON.stringify(passedStopsTime));
       if (db && isAdmin) {
@@ -1063,6 +1130,9 @@
       renderRouteSelect();
       updateMapRoute();
       renderStopList();
+      if (currentBusLocation) {
+        calculateSequentialETA();
+      }
     }
 
     function renderStopList() {
@@ -1081,12 +1151,19 @@
       }
 
       const currentStops = routes[currentRouteId].stops;
+      const now = Date.now();
+      const ONE_HOUR = 1 * 60 * 60 * 1000;
+
       if(currentStops.length === 0) {
         listContainer.innerHTML = `<p style="text-align:center; color:var(--text-muted); margin-top:20px;">등록된 정류장이 없습니다.</p>`;
       } else {
         currentStops.forEach((stop, index) => {
+          const passedTime = passedStopsTime[stop.id];
+          const isPassed = passedTime && (now - passedTime < ONE_HOUR);
+          const timeStr = isPassed ? formatPassedTime(passedTime) : "";
+
           const div = document.createElement("div");
-          div.className = "stop-item";
+          div.className = isPassed ? "stop-item passed" : "stop-item";
           div.id = `stop-card-${prefix}-${stop.id}`;
           div.innerHTML = `
             <div class="stop-header">
@@ -1095,7 +1172,7 @@
             </div>
             <div class="stop-eta">
               <span>도착 예정:</span>
-              <span id="eta-${prefix}-${stop.id}">위치 수신 대기 중...</span>
+              <span id="eta-${prefix}-${stop.id}">${isPassed ? `<span style="color:var(--text-muted);">✅ 통과 완료${timeStr ? ` (${timeStr})` : ''}</span>` : '위치 수신 대기 중...'}</span>
             </div>
             ${prefix === 'd' && isAdmin ? `
               <div class="stop-actions">
@@ -1278,6 +1355,7 @@
         document.getElementById("map-container").style.display = "none";
         document.getElementById("driver-sidebar").style.display = "flex";
 
+        updateOperationStatusUI();
         renderStopList();
         alert("기사님 관리자 모드로 로그인되었습니다.");
       } else {
@@ -1286,6 +1364,9 @@
     }
 
     function logout() {
+      if (watchId || isTripActive) {
+        stopOperation();
+      }
       isAdmin = false;
       document.getElementById("user-badge").innerText = "승객 (조회 전용)";
       document.getElementById("user-badge").className = "badge-passenger";
@@ -1297,7 +1378,6 @@
       document.getElementById("map-container").style.display = "none";
       document.getElementById("driver-sidebar").style.display = "none";
 
-      if(watchId) toggleGPS();
       renderStopList();
     }
 
@@ -1332,38 +1412,6 @@
       localStorage.setItem(ADMIN_PASSWORD_KEY, newPw);
       closeModal("modal-change-pw");
       alert("비밀번호가 성공적으로 변경되었습니다.");
-    }
-
-    function toggleGPS() {
-      if(!isAdmin) return;
-      const btn = document.getElementById("btn-toggle-gps");
-      const dot = document.getElementById("gps-dot");
-      const text = document.getElementById("gps-text");
-
-      if(!watchId) {
-        if(!navigator.geolocation) {
-          alert("이 브라우저는 위치 서비스를 지원하지 않습니다.");
-          return;
-        }
-
-        watchId = navigator.geolocation.watchPosition(
-          handleGPSPosition,
-          (err) => alert("위치 정보를 가져올 수 없습니다: " + err.message),
-          { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 }
-        );
-
-        btn.innerText = "🛑 추적 중지";
-        btn.classList.replace("btn-primary", "btn-secondary");
-        dot.classList.add("active");
-        text.innerText = "GPS 추적 중";
-      } else {
-        navigator.geolocation.clearWatch(watchId);
-        watchId = null;
-        btn.innerText = "📡 위치 추적 시작";
-        btn.classList.replace("btn-secondary", "btn-primary");
-        dot.classList.remove("active");
-        text.innerText = "GPS 정지됨";
-      }
     }
 
     function openAddStopModal() {
