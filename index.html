@@ -101,21 +101,27 @@
     .status-label { font-size: 0.72rem; color: var(--text-muted); margin-bottom: 2px; }
     .status-value { font-size: 0.9rem; font-weight: 700; color: var(--primary); }
 
+    /* 기사님 화면 상태바 (한 줄로 슬림하게 배치) */
+    .driver-dashboard { background: var(--card-bg); border-bottom: 1px solid var(--border-color); padding: 6px 14px; display: flex; justify-content: space-around; align-items: center; flex-shrink: 0; }
+    .driver-dashboard .status-item { display: flex; align-items: center; gap: 6px; }
+    .driver-dashboard .status-label { font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0; }
+    .driver-dashboard .status-value { font-size: 0.85rem; font-weight: 700; color: var(--primary); }
+
     .address-bar { background: var(--card-bg); border-bottom: 1px solid var(--border-color); padding: 8px 14px; font-size: 0.8rem; display: flex; align-items: center; gap: 6px; flex-shrink: 0; color: var(--text-color); font-weight: 500; }
     .address-bar span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
     .sidebar { width: 100%; background-color: var(--card-bg); display: flex; flex-direction: column; z-index: 5; height: 100%; min-height: 0; overflow: hidden; }
-    .sidebar-header { padding: 12px 14px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; }
+    .sidebar-header { padding: 10px 14px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; }
     .sidebar-header h2 { font-size: 0.95rem; color: var(--text-color); }
 
-    .driver-control-bar { background: var(--bg-color); border-bottom: 1px solid var(--border-color); padding: 10px 14px; display: flex; flex-direction: column; gap: 8px; flex-shrink: 0; }
+    .driver-control-bar { background: var(--bg-color); border-bottom: 1px solid var(--border-color); padding: 8px 14px; display: flex; flex-direction: column; gap: 6px; flex-shrink: 0; }
     .driver-control-row { display: flex; justify-content: space-between; align-items: center; gap: 6px; flex-wrap: wrap; }
     .gps-status-box { display: flex; align-items: center; gap: 6px; font-size: 0.8rem; font-weight: 600; }
     .dot { width: 8px; height: 8px; border-radius: 50%; background: #9ca3af; }
     .dot.active { background: #10b981; animation: pulse 1.5s infinite; }
     @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.4; } 100% { opacity: 1; } }
 
-    .sidebar-admin-actions { padding: 8px 14px; background: var(--card-bg); border-bottom: 1px solid var(--border-color); display: flex; gap: 4px; justify-content: flex-end; flex-wrap: wrap; flex-shrink: 0; }
+    .sidebar-admin-actions { padding: 6px 14px; background: var(--card-bg); border-bottom: 1px solid var(--border-color); display: flex; gap: 4px; justify-content: flex-end; flex-wrap: wrap; flex-shrink: 0; }
 
     .stop-list { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 12px 14px 40px 14px; max-width: 800px; width: 100%; margin: 0 auto; min-height: 0; }
     .stop-item { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 10px; padding: 14px; margin-bottom: 10px; position: relative; box-shadow: 0 2px 4px rgba(0,0,0,0.02); transition: all 0.3s ease; }
@@ -234,14 +240,15 @@
 
     <!-- Sidebar: 기사 모드용 패널 -->
     <div id="driver-sidebar" class="sidebar" style="display: none;">
-      <div class="status-dashboard" style="background: var(--bg-color);">
+      <!-- 기사님 화면 상태바 (한 줄로 슬림하게 배치) -->
+      <div class="driver-dashboard">
         <div class="status-item">
-          <div class="status-label">현재 속도</div>
-          <div id="driver-speed" class="status-value">0 km/h</div>
+          <span class="status-label">현재 속도:</span>
+          <span id="driver-speed" class="status-value">0 km/h</span>
         </div>
         <div class="status-item">
-          <div class="status-label">현재 접속자</div>
-          <div id="driver-online-count" class="status-value" style="color: var(--accent);">1 명</div>
+          <span class="status-label">현재 접속자:</span>
+          <span id="driver-online-count" class="status-value" style="color: var(--accent);">1 명</span>
         </div>
       </div>
 
@@ -265,7 +272,7 @@
           </div>
         </div>
         <div class="driver-control-row">
-          <button id="btn-toggle-operation" class="btn btn-accent" style="flex:1; padding: 9px 12px; font-size: 0.88rem;" onclick="toggleOperation()">🟢 운행 시작 (GPS 켜기)</button>
+          <button id="btn-toggle-operation" class="btn btn-accent" style="flex:1; padding: 8px 12px; font-size: 0.85rem;" onclick="toggleOperation()">🟢 운행 시작 (GPS 켜기)</button>
         </div>
       </div>
       
@@ -1116,14 +1123,11 @@
         if(directDist < 100) {
           etaElem.innerHTML = `<span style="color:var(--accent);">🎉 잠시 후 도착!</span>`;
         } else {
-          let estimatedMinutes = 0;
-          if (currentBusSpeed && currentBusSpeed > 1.39) { 
-            const speedKmh = currentBusSpeed * 3.6;
-            estimatedMinutes = Math.ceil((routeMeters / 1000) / speedKmh * 60);
-          } else {
-            estimatedMinutes = Math.ceil((routeMeters / 1000) / 30 * 60);
-          }
-          estimatedMinutes = Math.max(1, estimatedMinutes);
+          // 0~30km/h 구간(정차 및 서행)에서는 기본 30km/h 기준 적용, 30km/h 초과 시 실제 속도 적용
+          const rawSpeedKmh = currentBusSpeed ? currentBusSpeed * 3.6 : 0;
+          const effectiveSpeedKmh = rawSpeedKmh >= 30 ? rawSpeedKmh : 30;
+          
+          const estimatedMinutes = Math.max(1, Math.ceil((routeMeters / 1000) / effectiveSpeedKmh * 60));
           const timeText = formatEstimatedTime(estimatedMinutes);
           etaElem.innerText = `${timeText} (${distanceKm} km)`;
         }
