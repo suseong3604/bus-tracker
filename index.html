@@ -135,6 +135,34 @@
     .stop-item.passed { opacity: 0.48; filter: grayscale(100%); background-color: var(--bg-color); }
     .stop-item.passed .stop-name { text-decoration: line-through; }
 
+    /* 버스가 지나갈 바로 앞 정류장 빨간색 반짝임 효과 */
+    .stop-item.next-stop {
+      border: 2px solid #ef4444;
+      animation: nextStopBlink 1.3s ease-in-out infinite;
+    }
+    @keyframes nextStopBlink {
+      0%, 100% {
+        border-color: #ef4444;
+        box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.45), 0 2px 8px rgba(239, 68, 68, 0.2);
+      }
+      50% {
+        border-color: #fca5a5;
+        box-shadow: 0 0 0 5px rgba(239, 68, 68, 0.12), 0 4px 12px rgba(239, 68, 68, 0.35);
+      }
+    }
+
+    .next-stop-badge {
+      display: inline-block;
+      background: #ef4444;
+      color: #ffffff;
+      font-size: 0.7rem;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 4px;
+      margin-left: 6px;
+      vertical-align: middle;
+    }
+
     .stop-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; gap: 8px; }
     .stop-name { font-weight: 700; font-size: 0.98rem; color: var(--text-color); line-height: 1.3; }
     .stop-time { font-size: 0.76rem; color: var(--text-muted); background: var(--bg-color); padding: 3px 7px; border-radius: 5px; border: 1px solid var(--border-color); white-space: nowrap; flex-shrink: 0; font-weight: 500; }
@@ -157,7 +185,6 @@
     .form-group input:focus, .form-group textarea:focus { outline: none; border-color: var(--primary); }
     .modal-actions { display: flex; justify-content: flex-end; gap: 6px; margin-top: 16px; }
 
-    /* 토글 스위치용 스타일 */
     .toggle-row { display: flex; justify-content: space-between; align-items: center; background: var(--bg-color); padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border-color); margin-bottom: 12px; }
     .toggle-row span { font-size: 0.88rem; font-weight: 600; }
     .toggle-row input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--primary); cursor: pointer; }
@@ -265,7 +292,6 @@
 
     <!-- Sidebar: 기사 모드용 패널 -->
     <div id="driver-sidebar" class="sidebar" style="display: none;">
-      <!-- 기사님 화면 상태바 (한 줄로 슬림하게 배치) -->
       <div class="driver-dashboard">
         <div class="status-item">
           <span class="status-label">현재 속도:</span>
@@ -528,6 +554,8 @@
     }
 
     const ADMIN_PASSWORD_KEY = 'bus_admin_password';
+    const PASS_RETENTION_MS = 2 * 60 * 60 * 1000; // 통과 완료 유지 시간: 2시간
+
     let isAdmin = false;
     let isDarkTheme = false;
     let isTripActive = false;
@@ -551,12 +579,10 @@
     let currentRouteId = routeOrder[0] || Object.keys(routes)[0] || "route-1";
     let activeDriverRouteId = routeOrder[0] || "route-1";
 
-    // 상단 배너 공지 상태
     let notices = [];
     let noticeIndex = 0;
     let noticeTimer = null;
 
-    // 독립 팝업 시스템 상태 (공지와 완전히 분리)
     let systemPopupData = {
       enabled: false,
       title: "",
@@ -590,6 +616,12 @@
       initFirebaseListeners();
       initPresenceTracker();
     };
+
+    function isStopCurrentlyPassed(stopId, now = Date.now()) {
+      const ts = passedStopsTime && passedStopsTime[stopId];
+      if (!ts) return false;
+      return (now - ts) < PASS_RETENTION_MS;
+    }
 
     function formatPassedTime(timestamp) {
       if (!timestamp) return "";
@@ -653,13 +685,10 @@
         }
       });
 
+      // passed_stops 실시간 동기화 (관리자/승객 모두 동일하게 수신)
       db.ref("passed_stops").on("value", (snapshot) => {
         const data = snapshot.val();
-        if (data) {
-          passedStopsTime = data;
-        } else {
-          passedStopsTime = {};
-        }
+        passedStopsTime = (data && typeof data === 'object') ? data : {};
         localStorage.setItem('passed_stops_time', JSON.stringify(passedStopsTime));
         renderStopList();
         if (currentBusLocation) {
@@ -674,7 +703,6 @@
             activeDriverRouteId = data.activeDriverRouteId;
             renderRouteSelect();
           }
-          // 상단 롤링 배너 공지 처리
           if (data.notices) {
             notices = data.notices;
             updateNoticeBannerUI();
@@ -682,7 +710,6 @@
             notices = [];
             updateNoticeBannerUI();
           }
-          // 독립 팝업 시스템 처리
           if (data.systemPopup) {
             systemPopupData = data.systemPopup;
             evaluateAndShowSystemPopup();
@@ -713,13 +740,15 @@
           renderRouteSelect();
           updateMapRoute();
           renderStopList();
+          if (currentBusLocation) {
+            calculateSequentialETA();
+          }
         } else {
           syncRoutesToCloud();
         }
       });
     }
 
-    // --- 상단 배너 공지 시스템 ---
     function updateNoticeBannerUI() {
       const banner = document.getElementById("notice-banner");
       const textElem = document.getElementById("notice-text");
@@ -763,7 +792,6 @@
       alert("상단 배너 공지사항이 저장되었습니다!");
     }
 
-    // --- 독립 팝업 시스템 ---
     function getTodayString() {
       const now = new Date();
       const y = now.getFullYear();
@@ -782,7 +810,6 @@
       const hideKey = `sys_popup_hide_${systemPopupData.updatedAt}`;
       const savedHideDate = localStorage.getItem(hideKey);
 
-      // 오늘 하루 안 보기가 설정되어 있지 않으면 팝업 오픈
       if (savedHideDate !== todayStr) {
         document.getElementById("system-popup-title").innerText = systemPopupData.title || "안내 말씀";
         document.getElementById("system-popup-body").innerText = systemPopupData.content;
@@ -821,7 +848,7 @@
         enabled: enabled,
         title: title,
         content: content,
-        updatedAt: Date.now() // 새로 저장할 때마다 고유 ID 갱신 (오늘 하루 안보기 리셋 효과)
+        updatedAt: Date.now()
       };
 
       if (db) {
@@ -832,7 +859,6 @@
       alert(enabled ? "팝업 설정이 저장 및 활성화되었습니다!" : "팝업이 비활성화(꺼짐) 되었습니다.");
     }
 
-    // --- 사용방법(가이드) 모달 ---
     function openGuideModal() {
       document.getElementById("guide-content-display").innerText = appGuideText;
       document.getElementById("guide-view-area").style.display = "block";
@@ -1202,9 +1228,8 @@
     function toggleStopPassStatus(stopId) {
       if (!isAdmin) return;
       const now = Date.now();
-      const ONE_HOUR = 1 * 60 * 60 * 1000;
 
-      if (passedStopsTime[stopId] && (now - passedStopsTime[stopId] < ONE_HOUR)) {
+      if (isStopCurrentlyPassed(stopId, now)) {
         delete passedStopsTime[stopId];
       } else {
         passedStopsTime[stopId] = now;
@@ -1220,72 +1245,116 @@
       }
     }
 
+    // 현재 노선에서 아직 통과하지 않은 첫 번째 정류장 ID 반환
+    function getNextTargetStopId(currentStops, now = Date.now()) {
+      for (let i = 0; i < currentStops.length; i++) {
+        if (!isStopCurrentlyPassed(currentStops[i].id, now)) {
+          return currentStops[i].id;
+        }
+      }
+      return null;
+    }
+
     function calculateSequentialETA() {
-      if(!currentBusLocation) return;
       const currentStops = routes[currentRouteId]?.stops || [];
       const now = Date.now();
-      const ONE_HOUR = 1 * 60 * 60 * 1000;
       let isUpdated = false;
+      const hasBusPos = Boolean(currentBusLocation && typeof google !== 'undefined' && google.maps && google.maps.geometry);
+      const busLatLng = hasBusPos ? new google.maps.LatLng(currentBusLocation.lat, currentBusLocation.lng) : null;
 
-      let accumulatedMeters = 0;
-      let isFirstUnpassed = true;
-      const busLatLng = new google.maps.LatLng(currentBusLocation.lat, currentBusLocation.lng);
+      // 만료된(2시간 경과) 통과 기록 정리
+      Object.keys(passedStopsTime || {}).forEach((stopIdKey) => {
+        const ts = passedStopsTime[stopIdKey];
+        if (!ts || (now - ts >= PASS_RETENTION_MS)) {
+          delete passedStopsTime[stopIdKey];
+          isUpdated = true;
+        }
+      });
 
-      currentStops.forEach((stop, index) => {
-        const stopPos = new google.maps.LatLng(stop.lat, stop.lng);
-        const directDistToStop = google.maps.geometry.spherical.computeDistanceBetween(busLatLng, stopPos);
-
-        if (directDistToStop < 100) {
-          if (!passedStopsTime[stop.id]) {
+      // 기사가 GPS 운행 중일 때만 100m 자동 통과 판정(승객 화면에서 임의 덮어쓰기 방지)
+      if (isAdmin && hasBusPos) {
+        currentStops.forEach((stop) => {
+          const stopPos = new google.maps.LatLng(stop.lat, stop.lng);
+          const directDistToStop = google.maps.geometry.spherical.computeDistanceBetween(busLatLng, stopPos);
+          if (directDistToStop < 100 && !passedStopsTime[stop.id]) {
             passedStopsTime[stop.id] = now;
             isUpdated = true;
           }
-        }
+        });
+      }
 
+      const nextTargetStopId = getNextTargetStopId(currentStops, now);
+      let accumulatedMeters = 0;
+      let isFirstUnpassed = true;
+
+      currentStops.forEach((stop, index) => {
         const passedTime = passedStopsTime[stop.id];
-        const isPassed = passedTime && (now - passedTime < ONE_HOUR);
+        const isPassed = isStopCurrentlyPassed(stop.id, now);
+        const isNextStop = !isPassed && (stop.id === nextTargetStopId);
 
-        if (passedTime && (now - passedTime >= ONE_HOUR)) {
-          delete passedStopsTime[stop.id];
-          isUpdated = true;
-        }
+        let directDistToStop = null;
+        if (hasBusPos) {
+          const stopPos = new google.maps.LatLng(stop.lat, stop.lng);
+          directDistToStop = google.maps.geometry.spherical.computeDistanceBetween(busLatLng, stopPos);
 
-        if (!isPassed) {
-          if (isFirstUnpassed) {
-            accumulatedMeters = directDistToStop;
-            isFirstUnpassed = false;
-          } else {
-            const prevStopPos = new google.maps.LatLng(currentStops[index - 1].lat, currentStops[index - 1].lng);
-            accumulatedMeters += google.maps.geometry.spherical.computeDistanceBetween(prevStopPos, stopPos);
+          if (!isPassed) {
+            if (isFirstUnpassed) {
+              accumulatedMeters = directDistToStop;
+              isFirstUnpassed = false;
+            } else {
+              const prevStopPos = new google.maps.LatLng(currentStops[index - 1].lat, currentStops[index - 1].lng);
+              accumulatedMeters += google.maps.geometry.spherical.computeDistanceBetween(prevStopPos, stopPos);
+            }
           }
         }
 
-        applySequentialPassStatusToUI(stop.id, 'p', isPassed, passedTime, directDistToStop, isPassed ? 0 : accumulatedMeters);
-        applySequentialPassStatusToUI(stop.id, 'd', isPassed, passedTime, directDistToStop, isPassed ? 0 : accumulatedMeters);
+        applySequentialPassStatusToUI(
+          stop.id,
+          'p',
+          isPassed,
+          isNextStop,
+          passedTime,
+          hasBusPos ? directDistToStop : null,
+          isPassed ? 0 : accumulatedMeters,
+          hasBusPos
+        );
+        applySequentialPassStatusToUI(
+          stop.id,
+          'd',
+          isPassed,
+          isNextStop,
+          passedTime,
+          hasBusPos ? directDistToStop : null,
+          isPassed ? 0 : accumulatedMeters,
+          hasBusPos
+        );
       });
 
       if (isUpdated) {
         localStorage.setItem('passed_stops_time', JSON.stringify(passedStopsTime));
         if (db && isAdmin) {
-          db.ref("passed_stops").set(passedStopsTime);
+          db.ref("passed_stops").set(Object.keys(passedStopsTime).length ? passedStopsTime : null);
         }
       }
     }
 
-    function applySequentialPassStatusToUI(stopId, prefix, isPassed, passedTime, directDist, routeMeters) {
+    function applySequentialPassStatusToUI(stopId, prefix, isPassed, isNextStop, passedTime, directDist, routeMeters, hasBusPos) {
       const cardElem = document.getElementById(`stop-card-${prefix}-${stopId}`);
       const etaElem = document.getElementById(`eta-${prefix}-${stopId}`);
       if (!cardElem || !etaElem) return;
 
+      cardElem.classList.toggle("passed", Boolean(isPassed));
+      cardElem.classList.toggle("next-stop", Boolean(isNextStop));
+
       if (isPassed) {
-        cardElem.classList.add("passed");
         const timeStr = formatPassedTime(passedTime);
         etaElem.innerHTML = `<span style="color:var(--text-muted);">✅ 통과 완료${timeStr ? ` (${timeStr})` : ''}</span>`;
+      } else if (!hasBusPos) {
+        etaElem.innerHTML = '위치 수신 대기 중...';
       } else {
-        cardElem.classList.remove("passed");
         const distanceKm = (routeMeters / 1000).toFixed(1);
 
-        if(directDist < 100) {
+        if (directDist !== null && directDist < 100) {
           etaElem.innerHTML = `<span style="color:var(--accent);">🎉 잠시 후 도착!</span>`;
         } else {
           const rawSpeedKmh = currentBusSpeed ? currentBusSpeed * 3.6 : 0;
@@ -1321,15 +1390,14 @@
     function switchRoute(routeId) {
       currentRouteId = routeId;
 
-      passedStopsTime = {};
-      localStorage.setItem('passed_stops_time', JSON.stringify(passedStopsTime));
-      if (db && isAdmin) {
-        db.ref("passed_stops").set(null);
-      }
-
-      if (isAdmin && db) {
-        activeDriverRouteId = routeId;
-        db.ref("bus_state").update({ activeDriverRouteId: routeId });
+      if (isAdmin) {
+        passedStopsTime = {};
+        localStorage.setItem('passed_stops_time', JSON.stringify(passedStopsTime));
+        if (db) {
+          db.ref("passed_stops").set(null);
+          activeDriverRouteId = routeId;
+          db.ref("bus_state").update({ activeDriverRouteId: routeId });
+        }
       }
 
       renderRouteSelect();
@@ -1357,22 +1425,27 @@
 
       const currentStops = routes[currentRouteId].stops;
       const now = Date.now();
-      const ONE_HOUR = 1 * 60 * 60 * 1000;
+      const nextTargetStopId = getNextTargetStopId(currentStops, now);
 
       if(currentStops.length === 0) {
         listContainer.innerHTML = `<p style="text-align:center; color:var(--text-muted); margin-top:20px;">등록된 정류장이 없습니다.</p>`;
       } else {
         currentStops.forEach((stop, index) => {
           const passedTime = passedStopsTime[stop.id];
-          const isPassed = passedTime && (now - passedTime < ONE_HOUR);
+          const isPassed = isStopCurrentlyPassed(stop.id, now);
+          const isNextStop = !isPassed && (stop.id === nextTargetStopId);
           const timeStr = isPassed ? formatPassedTime(passedTime) : "";
 
+          const cardClasses = ["stop-item"];
+          if (isPassed) cardClasses.push("passed");
+          if (isNextStop) cardClasses.push("next-stop");
+
           const div = document.createElement("div");
-          div.className = isPassed ? "stop-item passed" : "stop-item";
+          div.className = cardClasses.join(" ");
           div.id = `stop-card-${prefix}-${stop.id}`;
           div.innerHTML = `
             <div class="stop-header">
-              <span class="stop-name">${index + 1}. ${stop.name}</span>
+              <span class="stop-name">${index + 1}. ${stop.name}${isNextStop ? `<span class="next-stop-badge">바로 앞 정류장</span>` : ''}</span>
               <span class="stop-time">${stop.scheduledTime || '시각 미정'}</span>
             </div>
             <div class="stop-eta">
@@ -1401,6 +1474,10 @@
         이 사이트는 AI를 이용하여 제작하였습니다.
       `;
       listContainer.appendChild(footerDiv);
+
+      if (currentBusLocation) {
+        calculateSequentialETA();
+      }
     }
 
     function openAddRouteModal() {
